@@ -216,6 +216,45 @@ button:
       name: "Clear Reminder"
 ```
 
+## Zavepower SmartBox (ESP32-S3-WROOM-1)
+
+This repo includes an example config for the deprecated Zavepower Energy
+Optimizer / elysics "Pool Sweden SmartBox" board (marking `EB00174-B`), built
+around an ESP32-S3-WROOM-1. It runs the `balboa_spa` component and drives the
+board's onboard Status LED as a firmware health indicator.
+
+### Confirming the GPIO pinout
+
+Most of the board's GPIO routing isn't documented, so confirm the pins on your
+own board with the included discovery firmware (flash over USB-C, then watch the
+logs). Run each with `esphome run <file>` and `esphome logs <file>`:
+
+| File | Confirms |
+|---|---|
+| `zavepower_led_discovery.yaml` | Status LED GPIO (and active-high/low polarity) |
+| `zavepower_uart_discovery.yaml` | Spa UART RX/TX pins (edit-and-watch loop) |
+
+Known by convention: Prog button = `GPIO0`, Reset = `EN`, USB-C = native USB.
+
+Record your results here:
+
+| Signal | GPIO | Notes |
+|---|---|---|
+| Status LED | _GPIO?_ | active-high / active-low |
+| Spa UART RX | _GPIO?_ | |
+| Spa UART TX | _GPIO?_ | |
+
+### Using the config
+
+1. Put your WiFi credentials in `secrets.yaml` (`wifi_ssid`, `wifi_password`).
+2. In `zavepower_smartbox.yaml`, set the pin values in `substitutions` to the
+   values you confirmed above. If the LED is active-low, set the `status_led`
+   `inverted: true`.
+3. Flash over USB-C: `esphome run zavepower_smartbox.yaml`.
+
+The config ships with a representative set of spa entities; see
+`test_balboa_spa_component.yaml` for the full list you can add.
+
 ## Fault Monitoring
 
 The component provides comprehensive fault monitoring capabilities to help diagnose spa issues:
