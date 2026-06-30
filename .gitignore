@@ -37,3 +37,8 @@ __pycache__
 
 # CodeQL temporary files
 _codeql_detected_source_root
+
+# ESPHome build output, venv, and local secrets
+.build/
+.venv/
+/secrets.yaml

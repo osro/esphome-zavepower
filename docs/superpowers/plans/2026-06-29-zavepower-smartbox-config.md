@@ -4,7 +4,7 @@
 
 **Goal:** Add an end-user ESPHome example config for running the `balboa_spa` component on the elysics "Pool Sweden SmartBox" (ESP32-S3-WROOM-1), plus discovery firmware to confirm its unknown GPIOs and a status-LED health indicator.
 
-**Architecture:** Pure ESPHome YAML, no C++ changes. Three single-purpose discovery firmware files empirically confirm the Status LED, Status button, and spa UART pins on the real board (a GPIO can't hold two roles in one config, so discovery is split by role). A final sample config wires the confirmed pins, the `balboa_spa` component, and the onboard LED as a `status_led` health indicator. A README section documents the workflow.
+**Architecture:** Pure ESPHome YAML, no C++ changes. Two single-purpose discovery firmware files empirically confirm the Status LED and the spa UART pins on the real board (a GPIO can't hold two roles in one config, so discovery is split by role). The board has only Reset and Prog buttons, so there is no user button to discover. A final sample config wires the confirmed pins, the `balboa_spa` component, and the onboard LED as a `status_led` health indicator. A README section documents the workflow.
 
 **Tech Stack:** ESPHome (esp-idf framework), ESP32-S3-WROOM-1, the local `balboa_spa` external component, USB Serial/JTAG logging.
 
@@ -165,245 +165,7 @@ git commit -m "feat: add Status LED GPIO discovery firmware for Zavepower SmartB
 
 ---
 
-## Task 2: Status button discovery firmware
-
-**Files:**
-- Create: `zavepower_button_discovery.yaml`
-
-**Interfaces:**
-- Consumes: nothing.
-- Produces: a flashable firmware that logs `GPIOxx -> HIGH/LOW` on every candidate-pin transition. Operator output: the confirmed Status-button GPIO (the pin that toggles consistently when the Status button is pressed).
-
-- [ ] **Step 1: Create the discovery config**
-
-Create `zavepower_button_discovery.yaml`:
-```yaml
-# Zavepower SmartBox (ESP32-S3-WROOM-1) — Status button GPIO discovery
-#
-# 1. Flash over USB-C:   esphome run zavepower_button_discovery.yaml
-# 2. Watch the logs:     esphome logs zavepower_button_discovery.yaml
-# Press the Status button firmly and watch for the GPIO that toggles in step
-# with each press/release. Floating candidate pins may chatter; the button pin
-# is the one whose transitions line up with your presses. Pullups are enabled,
-# so a button-to-GND reads HIGH idle and LOW pressed.
-
-esphome:
-  name: zavepower-button-discovery
-  build_path: .build/zavepower_button_discovery
-
-esp32:
-  board: esp32-s3-devkitc-1
-  framework:
-    type: esp-idf
-
-logger:
-  level: INFO
-  hardware_uart: USB_SERIAL_JTAG
-
-binary_sensor:
-  - platform: gpio
-    id: btn_1
-    pin: { number: GPIO1, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log:
-          format: "GPIO1 -> %s"
-          args: ['x ? "HIGH" : "LOW"']
-  - platform: gpio
-    id: btn_2
-    pin: { number: GPIO2, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO2 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_3
-    pin: { number: GPIO3, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO3 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_4
-    pin: { number: GPIO4, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO4 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_5
-    pin: { number: GPIO5, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO5 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_6
-    pin: { number: GPIO6, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO6 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_7
-    pin: { number: GPIO7, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO7 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_8
-    pin: { number: GPIO8, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO8 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_9
-    pin: { number: GPIO9, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO9 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_10
-    pin: { number: GPIO10, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO10 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_11
-    pin: { number: GPIO11, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO11 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_12
-    pin: { number: GPIO12, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO12 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_13
-    pin: { number: GPIO13, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO13 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_14
-    pin: { number: GPIO14, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO14 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_15
-    pin: { number: GPIO15, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO15 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_16
-    pin: { number: GPIO16, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO16 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_17
-    pin: { number: GPIO17, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO17 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_18
-    pin: { number: GPIO18, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO18 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_21
-    pin: { number: GPIO21, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO21 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_38
-    pin: { number: GPIO38, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO38 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_39
-    pin: { number: GPIO39, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO39 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_40
-    pin: { number: GPIO40, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO40 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_41
-    pin: { number: GPIO41, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO41 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_42
-    pin: { number: GPIO42, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO42 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_43
-    pin: { number: GPIO43, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO43 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_44
-    pin: { number: GPIO44, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO44 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_45
-    pin: { number: GPIO45, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO45 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_46
-    pin: { number: GPIO46, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO46 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_47
-    pin: { number: GPIO47, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO47 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-  - platform: gpio
-    id: btn_48
-    pin: { number: GPIO48, mode: { input: true, pullup: true } }
-    filters: [ delayed_on: 10ms, delayed_off: 10ms ]
-    on_state:
-      - logger.log: { format: "GPIO48 -> %s", args: ['x ? "HIGH" : "LOW"'] }
-```
-
-- [ ] **Step 2: Validate the config schema**
-
-Run: `esphome config zavepower_button_discovery.yaml`
-Expected: `INFO Configuration is valid!`
-
-- [ ] **Step 3: Compile**
-
-Run: `esphome compile zavepower_button_discovery.yaml`
-Expected: `Successfully compiled program.`
-
-- [ ] **Step 4: Commit**
-```bash
-git add zavepower_button_discovery.yaml
-git commit -m "feat: add Status button GPIO discovery firmware for Zavepower SmartBox"
-```
-
----
-
-## Task 3: Spa UART discovery firmware
+## Task 2: Spa UART discovery firmware
 
 **Files:**
 - Create: `zavepower_uart_discovery.yaml`
@@ -487,14 +249,14 @@ git commit -m "feat: add spa UART pin discovery firmware for Zavepower SmartBox"
 
 ---
 
-## Task 4: Final SmartBox sample config
+## Task 3: Final SmartBox sample config
 
 **Files:**
 - Create: `zavepower_smartbox.yaml`
 - Create: `secrets.yaml` (gitignored — for local validation only, not committed)
 
 **Interfaces:**
-- Consumes: the confirmed pins from Tasks 1–3 (filled into the `substitutions` block), and the `balboa_spa` component via the repo's git `external_components` source.
+- Consumes: the confirmed pins from Tasks 1–2 (filled into the `substitutions` block), and the `balboa_spa` component via the repo's git `external_components` source.
 - Produces: the end-user deliverable — a complete, copy-paste config with WiFi/API/OTA/time, the spa UART, a representative set of `balboa_spa` entities, and the onboard LED as a `status_led` health indicator.
 
 Note on placeholder pins: the `substitutions` block ships with plausible concrete defaults (so `esphome config` validates) and clear comments telling the user to replace them with discovery results. These are intentional template defaults, not plan placeholders.
@@ -651,7 +413,7 @@ git commit -m "feat: add Zavepower SmartBox Balboa Spa example config with statu
 
 ---
 
-## Task 5: README documentation
+## Task 4: README documentation
 
 **Files:**
 - Modify: `README.md`
@@ -680,7 +442,6 @@ logs). Run each with `esphome run <file>` and `esphome logs <file>`:
 | File | Confirms |
 |---|---|
 | `zavepower_led_discovery.yaml` | Status LED GPIO (and active-high/low polarity) |
-| `zavepower_button_discovery.yaml` | Status button GPIO |
 | `zavepower_uart_discovery.yaml` | Spa UART RX/TX pins (edit-and-watch loop) |
 
 Known by convention: Prog button = `GPIO0`, Reset = `EN`, USB-C = native USB.
@@ -690,7 +451,6 @@ Record your results here:
 | Signal | GPIO | Notes |
 |---|---|---|
 | Status LED | _GPIO?_ | active-high / active-low |
-| Status button | _GPIO?_ | |
 | Spa UART RX | _GPIO?_ | |
 | Spa UART TX | _GPIO?_ | |
 
@@ -717,14 +477,14 @@ git commit -m "docs: document Zavepower SmartBox board and discovery workflow"
 ## Self-Review
 
 **Spec coverage:**
-- Deliverable: example YAML config → Task 4. ✅
-- Discovery firmware (LED / button / UART) → Tasks 1, 2, 3. ✅ (Split into three files; documented why in Architecture.)
+- Deliverable: example YAML config → Task 3. ✅
+- Discovery firmware (LED / UART) → Tasks 1, 2. ✅ (Split into two files; documented why in Architecture.)
 - esp-idf framework + USB logging → Global Constraints, all tasks. ✅
-- status_led health indicator + commented spa-state/light alternatives → Task 4. ✅
-- README note → Task 5. ✅
-- Candidate GPIO pool / convention pins → Global Constraints + Tasks 1–3. ✅
+- status_led health indicator + commented spa-state/light alternatives → Task 3. ✅
+- README note → Task 4. ✅
+- Candidate GPIO pool / convention pins → Global Constraints + Tasks 1–2. ✅
 - Out of scope (no C++ changes, CI compile-test deferred) → honored; no task touches `components/` or CI. ✅
 
-**Placeholder scan:** The only `<...>`-style markers are the intentional README result-table blanks (`_GPIO?_`) and template defaults in Task 4, both explicitly called out as fill-in-by-user, not plan gaps. All YAML is complete and concrete. ✅
+**Placeholder scan:** The only `<...>`-style markers are the intentional README result-table blanks (`_GPIO?_`) and template defaults in Task 3, both explicitly called out as fill-in-by-user, not plan gaps. All YAML is complete and concrete. ✅
 
-**Type/name consistency:** `balboa_spa` id is `spa` and uart id is `spa_uart_bus` consistently across Tasks 3 and 4; substitution names `spa_rx_pin`/`spa_tx_pin`/`status_led_pin` match between the config and README; output id `led_output` is consistent within the Task 4 commented alternatives. ✅
+**Type/name consistency:** `balboa_spa` id is `spa` and uart id is `spa_uart_bus` consistently across Tasks 2 and 3; substitution names `spa_rx_pin`/`spa_tx_pin`/`status_led_pin` match between the config and README; output id `led_output` is consistent within the Task 3 commented alternatives. ✅

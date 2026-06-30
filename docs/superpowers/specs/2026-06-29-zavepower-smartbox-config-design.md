@@ -21,7 +21,8 @@ lolin_s2_mini-based test configs.
 The board exposes:
 
 - ESP32-S3-WROOM-1 module
-- `Reset` button, `Prog` button (SW3), `Status` button, a `Status` LED
+- `Reset` button and `Prog` button (SW3) — the only two buttons on the board
+- a `Status` LED (the `Status` silkscreen labels the LED, not a button)
 - USB-C connector (native USB)
 - 4-pin JST connector (orange/red/black/white cable) — the link to the spa
 - An 8-pin IC `U4` with `Rx`/`Tx` silkscreen near the JST — a UART
@@ -36,7 +37,6 @@ The board exposes:
 | Reset button | `EN` | High | Chip reset, not a GPIO |
 | USB-C | native USB CDC (`GPIO19/20`) | High | S3 native USB |
 | Status LED | unknown | None | Custom routing — determined by discovery |
-| Status button | unknown | None | Custom routing — determined by discovery |
 | Spa UART TX/RX | unknown | None | Routed via `U4`; determined by discovery |
 
 GPIO assignments cannot be read reliably from a single top-side photo (traces run
@@ -45,12 +45,17 @@ empirically with discovery firmware before being baked into the final config.
 
 ## Deliverables
 
-1. **`zavepower_pin_discovery.yaml`** — diagnostic firmware to confirm the
-   unknown GPIOs on the actual board.
-2. **`zavepower_smartbox.yaml`** — the end-user sample config (the primary
+1. **`zavepower_led_discovery.yaml`** — diagnostic firmware to confirm the
+   Status LED GPIO (and its polarity).
+2. **`zavepower_uart_discovery.yaml`** — diagnostic firmware to confirm the spa
+   UART RX/TX pins.
+3. **`zavepower_smartbox.yaml`** — the end-user sample config (the primary
    deliverable), pre-wired with confirmed pins + status LED.
-3. A short README note documenting the board, the (filled-in) pinout, and how to
+4. A short README note documenting the board, the (filled-in) pinout, and how to
    flash over USB-C.
+
+Discovery is split into two single-purpose files because a single GPIO cannot
+be declared in two roles (output vs input) within one ESPHome config.
 
 No C++ component changes. This is pure YAML plus the README note.
 
@@ -63,16 +68,15 @@ No C++ component changes. This is pure YAML plus the README note.
 
 ## Phase 1 — Discovery firmware
 
-`zavepower_pin_discovery.yaml` runs entirely off USB and prints to the serial
-log. It resolves three unknowns:
+The discovery firmware runs entirely off USB and prints to the serial log. It
+resolves two unknowns, in two files:
 
-- **Status LED GPIO.** On boot, an interval routine drives each candidate GPIO
-  high for ~2 seconds, logging `Testing GPIOxx`. The operator watches for the
-  moment the LED lights; that GPIO (and whether it is active-high or active-low)
-  is the answer.
-- **Status button GPIO.** Candidate GPIOs are configured as pulled-up inputs;
-  pressing the Status button logs which GPIO changed state.
-- **Spa UART TX/RX.** Candidates are narrowed around the `U4` transceiver, then
+- **Status LED GPIO** (`zavepower_led_discovery.yaml`). On boot, an interval
+  routine blinks each candidate GPIO for ~3 seconds, logging `Now blinking
+  GPIOxx`. The operator watches for the window where the LED reacts; that GPIO
+  (and whether it is active-high or active-low) is the answer.
+- **Spa UART TX/RX** (`zavepower_uart_discovery.yaml`). Candidates are narrowed
+  around the `U4` transceiver, then
   confirmed by watching the `balboa_spa` frame log: correct RX/TX yields valid
   spa frames, wrong pins yield silence or garbage. UART pins cannot be swept at
   runtime, so this is a short edit-and-watch loop over a small candidate list.
@@ -112,7 +116,7 @@ Known by convention and excluded from discovery: **Prog = GPIO0**,
 ## Success criteria
 
 - The discovery firmware flashes over USB-C and prints log output that lets the
-  operator identify the Status LED GPIO, Status button GPIO, and spa UART pins.
+  operator identify the Status LED GPIO and the spa UART pins.
 - The final sample config, with confirmed pins filled in, compiles, connects to
   WiFi/Home Assistant, drives the Status LED as a health indicator, and exchanges
   valid frames with the spa over UART.
