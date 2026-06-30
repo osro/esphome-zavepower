@@ -107,18 +107,31 @@ button:
     sync_time:
       name: "Sync Spa Time"
 
-# --- Alternative LED behaviors (uncomment ONE instead of status_led above) ---
+# --- Alternative LED behaviors (use instead of the status_led above) ---
+# Both alternatives below need the `output:` block, so uncomment that first,
+# then add EITHER the spa-state automation OR the light block (not both).
 #
-# Spa-state indicator (LED follows the heater):
+# 1. The shared GPIO output:
 # output:
 #   - platform: gpio
 #     pin:
 #       number: ${status_led_pin}
 #       inverted: false
 #     id: led_output
-# # ...drive id(led_output) from a balboa_spa heatstate binary_sensor automation.
 #
-# Plain controllable light exposed to Home Assistant:
+# 2a. Spa-state indicator (LED follows the heater) — drive led_output from heatstate:
+# binary_sensor:
+#   - platform: balboa_spa
+#     balboa_spa_id: spa
+#     heatstate:
+#       name: "Heating"
+#       on_state:
+#         then:
+#           - output.set_level:
+#               id: led_output
+#               level: !lambda 'return x ? 1.0 : 0.0;'
+#
+# 2b. OR a plain controllable light exposed to Home Assistant:
 # light:
 #   - platform: binary
 #     name: "Status LED"
