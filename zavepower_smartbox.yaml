@@ -8,16 +8,18 @@
 
 substitutions:
   device_name: zavepower-spa
-  # --- Pins confirmed via the discovery firmware (2026-07-03) ---
-  spa_rx_pin: GPIO44       # from zavepower_uart_discovery.yaml
-  spa_tx_pin: GPIO43       # from zavepower_uart_discovery.yaml
-  green_led_pin: GPIO17    # single LED — OK / power indicator
-  red_led_pin: GPIO18      # single LED — fault / error indicator
-  # Pin↔color corrected after on-hardware testing — the LED is common-anode,
-  # so the discovery sweep (active-low) mislabeled the channels.
-  rgb_red_pin: GPIO1       # discrete RGB LED — red channel
-  rgb_green_pin: GPIO2     # discrete RGB LED — green channel
-  rgb_blue_pin: GPIO42     # discrete RGB LED — blue channel
+  # --- Pins confirmed on-hardware (2026-07-03) via continuity to the ADM3483
+  #     RS-485 transceiver + the LED discovery firmware ---
+  # Spa RS-485 UART (Analog Devices ADM3483, half-duplex). NOTE: the RX/TX pins
+  # also drive the board's red/green LEDs, so those act as RX/TX activity
+  # indicators and are NOT separately controllable.
+  spa_rx_pin: GPIO18       # ADM3483 RO (pin 1); also the red RX-activity LED
+  spa_tx_pin: GPIO17       # ADM3483 DI (pin 4); also the green TX-activity LED
+  spa_de_pin: GPIO6        # ADM3483 /RE+DE direction (driven HIGH to transmit)
+  # Discrete RGB LED — common-anode (active-low); pin↔color confirmed on hardware.
+  rgb_red_pin: GPIO1       # RGB red channel
+  rgb_green_pin: GPIO2     # RGB green channel
+  rgb_blue_pin: GPIO42     # RGB blue channel
 
 esphome:
   name: ${device_name}
@@ -33,11 +35,6 @@ logger:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  # Green single LED = OK indicator: on when connected, off when not.
-  on_connect:
-    - output.turn_on: green_led
-  on_disconnect:
-    - output.turn_off: green_led
 
 api:
 
@@ -58,6 +55,7 @@ uart:
   id: spa_uart_bus
   rx_pin: ${spa_rx_pin}
   tx_pin: ${spa_tx_pin}
+  flow_control_pin: ${spa_de_pin}   # ADM3483 half-duplex direction (/RE + DE)
   data_bits: 8
   parity: NONE
   stop_bits: 1
@@ -69,25 +67,15 @@ balboa_spa:
   # Set this to C or F based on the units your spa is configured for.
   spa_temp_scale: F
 
-# --- Onboard LEDs (pins confirmed via discovery) ---
-# Red single LED = fault/error indicator. ESPHome's status_led lights/blinks
-# it on warnings and errors (e.g. WiFi/API problems), off when healthy.
-status_led:
-  pin:
-    number: ${red_led_pin}
-    inverted: false
-
+# --- Onboard LEDs ---
+# The red (GPIO18) and green (GPIO17) single LEDs sit directly on the UART
+# RX/TX lines, so they blink automatically as RS-485 receive/transmit activity
+# indicators. They are NOT separately controllable — those pins are the spa UART.
+#
+# Discrete RGB LED — exposed to Home Assistant as a full-color light.
+# Common-anode (active-low): each PWM (ledc) pin is inverted, so light-off =
+# pins high = LED dark (not white). Pin↔color mapping confirmed on hardware.
 output:
-  # Green single LED = OK/power indicator, driven from the wifi
-  # on_connect / on_disconnect automations above.
-  - platform: gpio
-    pin:
-      number: ${green_led_pin}
-      inverted: false
-    id: green_led
-  # Discrete RGB LED — one PWM (ledc) channel per color.
-  # Common-anode (active-low): each pin is inverted, so light-off = pins high =
-  # LED dark (not white). Pin↔color mapping corrected in substitutions above.
   - platform: ledc
     pin:
       number: ${rgb_red_pin}
