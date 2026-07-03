@@ -21,6 +21,19 @@ logger:
   level: INFO
   hardware_uart: USB_SERIAL_JTAG
 
+# WiFi/API/OTA let you watch discovery logs over the network and re-flash
+# without USB. NOTE: the very first flash must still be over USB-C, and USB
+# logs remain the more reliable observer during the actual GPIO sweep.
+# Put credentials in secrets.yaml (wifi_ssid / wifi_password).
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+
+ota:
+  - platform: esphome
+
 output:
   - { platform: gpio, pin: GPIO1,  id: cand_1 }
   - { platform: gpio, pin: GPIO2,  id: cand_2 }
