@@ -13,9 +13,11 @@ substitutions:
   spa_tx_pin: GPIO43       # from zavepower_uart_discovery.yaml
   green_led_pin: GPIO17    # single LED — OK / power indicator
   red_led_pin: GPIO18      # single LED — fault / error indicator
-  rgb_red_pin: GPIO2       # discrete RGB LED — red channel
-  rgb_green_pin: GPIO42    # discrete RGB LED — green channel
-  rgb_blue_pin: GPIO1      # discrete RGB LED — blue channel
+  # Pin↔color corrected after on-hardware testing — the LED is common-anode,
+  # so the discovery sweep (active-low) mislabeled the channels.
+  rgb_red_pin: GPIO1       # discrete RGB LED — red channel
+  rgb_green_pin: GPIO2     # discrete RGB LED — green channel
+  rgb_blue_pin: GPIO42     # discrete RGB LED — blue channel
 
 esphome:
   name: ${device_name}
@@ -84,16 +86,22 @@ output:
       inverted: false
     id: green_led
   # Discrete RGB LED — one PWM (ledc) channel per color.
-  # If colors look inverted (lit when they should be off), the LED is
-  # common-anode: set inverted: true on all three channels.
+  # Common-anode (active-low): each pin is inverted, so light-off = pins high =
+  # LED dark (not white). Pin↔color mapping corrected in substitutions above.
   - platform: ledc
-    pin: ${rgb_red_pin}
+    pin:
+      number: ${rgb_red_pin}
+      inverted: true
     id: rgb_red
   - platform: ledc
-    pin: ${rgb_green_pin}
+    pin:
+      number: ${rgb_green_pin}
+      inverted: true
     id: rgb_green
   - platform: ledc
-    pin: ${rgb_blue_pin}
+    pin:
+      number: ${rgb_blue_pin}
+      inverted: true
     id: rgb_blue
 
 # Full-color RGB LED exposed to Home Assistant.
