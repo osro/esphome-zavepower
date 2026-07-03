@@ -2,7 +2,7 @@
 #
 # 1. Flash over USB-C:   esphome run zavepower_led_discovery.yaml
 # 2. Watch the logs:     esphome logs zavepower_led_discovery.yaml
-# The firmware blinks each candidate GPIO for ~3s, logging which one is active.
+# The firmware blinks each candidate GPIO for ~10s, logging which one is active.
 # Watch the board's Status LED for the window where it visibly blinks:
 #   - Active-high LED: normally OFF, blinks ON during its window.
 #   - Active-low LED:  normally ON,  blinks OFF during its window.
@@ -83,7 +83,7 @@ interval:
           };
           const int n = sizeof(gpios) / sizeof(gpios[0]);
           if (tick == 0) {
-            ESP_LOGI("led_discovery", ">>> Now blinking GPIO%d for ~3s", gpios[idx]);
+            ESP_LOGI("led_discovery", ">>> Now blinking GPIO%d for ~10s", gpios[idx]);
           }
           if (tick % 2 == 0) {
             outs[idx]->turn_on();
@@ -91,7 +91,7 @@ interval:
             outs[idx]->turn_off();
           }
           tick++;
-          if (tick >= 12) {
+          if (tick >= 40) {
             outs[idx]->turn_off();
             tick = 0;
             idx = (idx + 1) % n;
