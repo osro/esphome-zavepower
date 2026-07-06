@@ -65,7 +65,9 @@ uart:
 balboa_spa:
   id: spa
   # Set this to C or F based on the units your spa is configured for.
-  spa_temp_scale: F
+  # Confirmed on-hardware (2026-07-06): the spa topside panel is set to Celsius,
+  # so the protocol encodes temperature as °C × 2 (half-degree resolution).
+  spa_temp_scale: C
 
 # --- Onboard LEDs ---
 # The red (GPIO18) and green (GPIO17) single LEDs sit directly on the UART
@@ -107,9 +109,9 @@ climate:
     balboa_spa_id: spa
     name: "Spa Thermostat"
     visual:
-      min_temperature: 62 °F
-      max_temperature: 105 °F
-      temperature_step: 0.5 °F
+      min_temperature: 16 °C
+      max_temperature: 40 °C
+      temperature_step: 0.5 °C
 
 switch:
   - platform: balboa_spa
