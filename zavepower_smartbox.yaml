@@ -120,6 +120,27 @@ switch:
       name: "Jet 1"
     light:
       name: "Lights"
+    # High/Low temperature range (wire code 0x50). ON = high range.
+    highrange:
+      name: "Temperature Range (High)"
+
+  # Ready/Rest heat mode. The Balboa protocol has no direct heater command and
+  # no native switch for this, so expose it via a template switch that drives
+  # the spa component's public toggle_heat()/get_restmode() methods.
+  - platform: template
+    name: "Heat Mode (Ready)"
+    icon: "mdi:radiator"
+    # ON = Ready (heats to hold the setpoint anytime).
+    # OFF = Rest (heats only during filter/circulation cycles).
+    # rest_mode==1 means Rest, so Ready = NOT restmode.
+    lambda: |-
+      return !id(spa)->get_restmode();
+    turn_on_action:
+      - lambda: |-
+          if (id(spa)->get_restmode()) id(spa)->toggle_heat();
+    turn_off_action:
+      - lambda: |-
+          if (!id(spa)->get_restmode()) id(spa)->toggle_heat();
 
 binary_sensor:
   - platform: balboa_spa
