@@ -3,13 +3,13 @@
 #           ESP32-S3-WROOM-1.
 #
 # Before flashing, replace the pin values in `substitutions` below with the
-# values confirmed using the discovery firmware (see README "Zavepower SmartBox").
+# values confirmed for your board revision (see README "Zavepower SmartBox").
 # Put your real WiFi credentials in secrets.yaml (wifi_ssid / wifi_password).
 
 substitutions:
   device_name: zavepower-spa
   # --- Pins confirmed on-hardware (2026-07-03) via continuity to the ADM3483
-  #     RS-485 transceiver + the LED discovery firmware ---
+  #     RS-485 transceiver + blinking candidate LED GPIOs ---
   # Spa RS-485 UART (Analog Devices ADM3483, half-duplex). NOTE: the RX/TX pins
   # also drive the board's red/green LEDs, so those act as RX/TX activity
   # indicators and are NOT separately controllable.

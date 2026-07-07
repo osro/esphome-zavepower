@@ -245,14 +245,10 @@ controllable). The RGB LED is exposed to Home Assistant as a controllable light.
 
 Known by convention: Prog button = `GPIO0`, Reset = `EN`, USB-C = native USB.
 
-If you have a different board revision, re-confirm with the discovery firmware
-(flash over USB-C, then watch the logs via `esphome run <file>` / `esphome logs
-<file>`):
-
-| File | Confirms |
-|---|---|
-| `zavepower_led_discovery.yaml` | LED GPIOs (blinks each candidate; note active-high/low polarity) |
-| `zavepower_uart_discovery.yaml` | Spa UART RX/TX/direction pins (edit-and-watch, or trace the ADM3483) |
+If you have a different board revision, re-confirm the pins before flashing:
+trace the ADM3483 transceiver for the UART pins (RO → RX, DI → TX, `/RE`+`DE` →
+direction), and blink candidate GPIOs to locate the LEDs (noting active-high/low
+polarity).
 
 ### Using the config
 
