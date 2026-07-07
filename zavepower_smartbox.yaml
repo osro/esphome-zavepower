@@ -194,6 +194,9 @@ binary_sensor:
       name: "Spa Connected"
     heatstate:
       name: "Heating"
+      # Component defaults this to device_class power (plug icon); override with
+      # a flame so it reads as heating.
+      icon: "mdi:fire"
     # --- Read-only status diagnostics (no hardware cost, pure protocol) ---
     circulation:
       name: "Circulation Pump"
