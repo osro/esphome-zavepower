@@ -255,12 +255,16 @@ text:
     balboa_spa_id: spa
     filter1_start_time:
       name: "Filter 1 Start Time"
+      mode: TEXT
     filter1_duration:
       name: "Filter 1 Duration"
+      mode: TEXT
     filter2_start_time:
       name: "Filter 2 Start Time"
+      mode: TEXT
     filter2_duration:
       name: "Filter 2 Duration"
+      mode: TEXT
 
 # --- Optional: make the RGB light track spa state instead of being manual ---
 # e.g. turn it red while the heater is running. Drive the rgb channels from a
