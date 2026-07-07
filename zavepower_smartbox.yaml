@@ -97,7 +97,7 @@ output:
 # Full-color RGB LED exposed to Home Assistant.
 light:
   - platform: rgb
-    name: "SmartBox Onboard RGB LED"
+    name: "Status"
     red: rgb_red
     green: rgb_green
     blue: rgb_blue
