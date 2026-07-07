@@ -123,6 +123,25 @@ switch:
     # High/Low temperature range (wire code 0x50). ON = high range.
     highrange:
       name: "Temperature Range (High)"
+    # Filter cycle 2 enable. ON registers a second daily filtration window
+    # (its start/duration are set via the text: block below).
+    filter2:
+      name: "Filter 2 Enable"
+    # --- Hardware-dependent extras ---
+    # These controls only do something if the spa physically has the pump/light.
+    # The spa advertises what it has in its config broadcast; toggling a control
+    # for absent hardware is a harmless no-op. Confirm on your spa (watch the
+    # component logs / topside panel) before uncommenting.
+    # jet2:
+    #   name: "Jet 2"
+    # jet3:
+    #   name: "Jet 3"
+    # jet4:
+    #   name: "Jet 4"
+    # light2:
+    #   name: "Lights 2"
+    # blower:
+    #   name: "Blower"
 
   # Ready/Rest heat mode. The Balboa protocol has no direct heater command and
   # no native switch for this, so expose it via a template switch that drives
@@ -142,6 +161,32 @@ switch:
       - lambda: |-
           if (!id(spa)->get_restmode()) id(spa)->toggle_heat();
 
+# The balboa_spa component has no built-in temperature sensor (water temp is
+# only surfaced through the climate entity above). Expose it as its own sensor
+# via a template that reads the component's public SpaState.
+sensor:
+  - platform: template
+    name: "Water Temperature"
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    update_interval: 10s
+    lambda: |-
+      float t = id(spa)->get_current_state()->current_temp;
+      if (isnan(t)) return {};
+      return t;
+
+  # Fault log details. Populated from the spa's fault history (polled every
+  # 5 min, or on demand via the "Request Fault Log" button below). See the
+  # "Fault Message" / "Fault Log Time" text sensors for the human-readable form.
+  - platform: balboa_spa
+    balboa_spa_id: spa
+    fault_code:
+      name: "Spa Fault Code"
+    fault_days_ago:
+      name: "Spa Fault Days Ago"
+
 binary_sensor:
   - platform: balboa_spa
     balboa_spa_id: spa
@@ -149,6 +194,22 @@ binary_sensor:
       name: "Spa Connected"
     heatstate:
       name: "Heating"
+    # --- Read-only status diagnostics (no hardware cost, pure protocol) ---
+    circulation:
+      name: "Circulation Pump"
+    filter1_running:
+      name: "Filter 1 Running"
+    filter2_running:
+      name: "Filter 2 Running"
+    cleanup_cycle:
+      name: "Cleanup Cycle"
+    # Rest mode active = heater only runs during filter/circulation cycles.
+    # Complements the "Heat Mode (Ready)" switch above (Ready = NOT rest).
+    restmode:
+      name: "Rest Mode"
+    # Hardware-dependent: only meaningful if the spa has a blower (see switch:).
+    # blower:
+    #   name: "Blower"
 
 text_sensor:
   - platform: balboa_spa
@@ -157,12 +218,49 @@ text_sensor:
       name: "Spa Time"
     fault_message:
       name: "Fault Message"
+    # When the most recent logged fault occurred.
+    fault_log_time:
+      name: "Fault Log Time"
+    # Active maintenance reminder (e.g. clean filter / check pH / sanitizer).
+    # Clear it with the "Clear Reminder" button once actioned.
+    reminder:
+      name: "Maintenance Reminder"
+    # Read-back of the current filter cycle schedule (set via the text: block).
+    filter1_config:
+      name: "Filter 1 Config"
+    filter2_config:
+      name: "Filter 2 Config"
+    # Firmware/protocol version reported by the spa.
+    component_version:
+      name: "Spa Component Version"
 
 button:
   - platform: balboa_spa
     balboa_spa_id: spa
     sync_time:
       name: "Sync Spa Time"
+    # Force an immediate re-poll of the spa's fault history (otherwise every
+    # 5 min). Updates the fault_code/fault_days_ago/fault_message entities.
+    request_fault_log:
+      name: "Request Fault Log"
+    # Acknowledge/clear the active maintenance reminder.
+    clear_reminder:
+      name: "Clear Reminder"
+
+# Filter cycle scheduling. Each value is "HH:MM" — start times are wall-clock,
+# durations are elapsed time. Setting a filter 2 time implicitly enables it;
+# use the "Filter 2 Enable" switch above to turn it off.
+text:
+  - platform: balboa_spa
+    balboa_spa_id: spa
+    filter1_start_time:
+      name: "Filter 1 Start Time"
+    filter1_duration:
+      name: "Filter 1 Duration"
+    filter2_start_time:
+      name: "Filter 2 Start Time"
+    filter2_duration:
+      name: "Filter 2 Duration"
 
 # --- Optional: make the RGB light track spa state instead of being manual ---
 # e.g. turn it red while the heater is running. Drive the rgb channels from a
