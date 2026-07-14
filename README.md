@@ -218,10 +218,48 @@ button:
 
 ## Zavepower SmartBox (ESP32-S3-WROOM-1)
 
-This repo includes an example config for the deprecated Zavepower Energy
+This repo includes a ready-to-use config for the deprecated Zavepower Energy
 Optimizer / elysics "Pool Sweden SmartBox" board (marking `EB00174-B`), built
-around an ESP32-S3-WROOM-1. It runs the `balboa_spa` component and exposes the
-board's onboard RGB LED to Home Assistant as a controllable light.
+around an ESP32-S3-WROOM-1. It runs the `balboa_spa` component and turns the
+board into a WiFi bridge between your Balboa spa and Home Assistant, and it
+exposes the board's onboard RGB LED as a controllable light.
+
+### The board
+
+![Zavepower SmartBox EB00174-B board](docs/images/zavepower_image_board.jpg)
+
+Key features to locate on your board:
+
+- **ESP32-S3-WROOM-1** — the WiFi module (top right).
+- **USB-C connector** — used for the first flash and serial logs (left edge).
+- **4-pin JST connector** — the spa harness; carries **14 V power + RS-485 data**
+  to/from the spa controller (bottom center).
+- **Prog** button — hold to enter the ESP32 bootloader.
+- **Reset** button — reboots the board.
+- **Status** button + **RGB LED** — the RGB LED is exposed to Home Assistant.
+
+### Powering the board
+
+The ESP32 side needs **14 V** on the power input; the onboard buck converter
+steps it down to 3.3 V. **USB-C is used for programming/logs only** and does not
+reliably power the full board (the RS-485 transceiver in particular). So during
+setup you power the board one of two ways *and* plug in USB-C for flashing.
+
+**Option A — external bench supply (recommended for setup on the bench)**
+
+Feed 14 V into the 2-pin power connector: **red = 14 V, black = GND**.
+
+![Powering the SmartBox from an external 14 V supply](docs/images/zavepower_image_power_using_external.png)
+
+**Option B — power from the spa harness (in place, on the spa)**
+
+The spa's own 4-pin cable already provides 14 V and GND, so once the board is
+wired to the spa it is powered by the spa. Plug in USB-C for flashing.
+
+![Powering the SmartBox from the spa connection while programming over USB](docs/images/zavepower_image_power_using_spaconnection.jpg)
+
+> ⚠️ **Never connect both** the external supply **and** the spa harness 14 V at
+> the same time — pick one power source. USB-C can stay connected in either case.
 
 ### Confirmed GPIO pinout (EB00174 board)
 
@@ -250,13 +288,72 @@ trace the ADM3483 transceiver for the UART pins (RO → RX, DI → TX, `/RE`+`DE
 direction), and blink candidate GPIOs to locate the LEDs (noting active-high/low
 polarity).
 
-### Using the config
+### Step-by-step setup (ESPHome Dashboard in Home Assistant — recommended)
 
-1. Put your WiFi credentials in `secrets.yaml` (`wifi_ssid`, `wifi_password`).
-2. On the same board revision the `substitutions` are already correct; on a
-   different revision, update them with the pins you confirmed above.
-3. Flash over USB-C: `esphome run zavepower_smartbox.yaml`. After the first
-   flash, logs and OTA updates work over WiFi.
+This is the easiest path if you run Home Assistant OS/Supervised: you do
+everything from the **ESPHome Device Builder** add-on's web UI in your browser,
+and only need USB for the very first flash.
+
+**1. Wire up the board.** Connect the SmartBox to the spa's 4-pin harness (this
+supplies 14 V + RS-485) *or*, for bench setup, feed 14 V into the 2-pin power
+connector (red = 14 V, black = GND). See [Powering the board](#powering-the-board)
+above. Use only one 14 V source.
+
+**2. Install the ESPHome add-on.** In Home Assistant, go to **Settings → Add-ons
+→ Add-on Store**, install **ESPHome Device Builder**, then **Start** it and click
+**Open Web UI**. (This also installs the ESPHome integration.)
+
+**3. Create the device config.** In the ESPHome dashboard click **+ New Device →
+Continue**, give it a name (e.g. `zavepower-spa`), pick **ESP32-S3** if asked,
+and **Skip** the wizard's WiFi step for now (you'll paste the full config next).
+This generates an entry and its API/OTA keys in `secrets.yaml`.
+
+**4. Paste in this config.** Click **Edit** on the new device and replace its
+contents with `zavepower_smartbox.yaml` from this repo. Then set your WiFi in the
+ESPHome dashboard's **Secrets** editor (top-right menu → **Secrets**):
+
+```yaml
+wifi_ssid: "YourNetwork"
+wifi_password: "YourPassword"
+```
+
+Check the temperature scale: `spa_temp_scale` is `C` by default — change it to
+`F` if your spa topside panel is in Fahrenheit. (On a different board revision,
+also update the pin `substitutions` to the values you confirmed above.)
+
+**5. First flash over USB.** Plug the board into the machine running the ESPHome
+dashboard via USB-C (make sure it's also powered per step 1). Click **Install →
+Plug into this computer** (or **Plug into the computer running ESPHome Web** and
+use [web.esphome.io](https://web.esphome.io) from Chrome/Edge if the add-on can't
+see the port). If the upload fails, hold **Prog**, tap **Reset**, release
+**Prog** to force the bootloader, and retry.
+
+**6. Verify communication.** Click **Logs** on the device. You should see spa
+messages being decoded and the **Spa Connected** sensor go on; the red/green
+activity LEDs on the board blink with RS-485 RX/TX traffic. Frequent `CRC`
+warnings are normal — see [Troubleshooting](#crc-errors).
+
+**7. Add to Home Assistant.** Once on WiFi, HA auto-discovers the device under
+**Settings → Devices & Services** (look for `zavepower-spa`). Click **Configure**
+and confirm. All spa entities (thermostat, jets, lights, filter schedule, fault
+log, RGB status LED, …) appear as one device.
+
+**8. Done — future updates are wireless.** After the first USB flash, use
+**Install → Wirelessly** in the ESPHome dashboard for all later changes; USB is
+only needed again if the board can't reach the network.
+
+### Alternative: flashing from the command line
+
+If you don't run the Home Assistant add-on, you can use the ESPHome CLI instead:
+
+```bash
+pip install esphome
+# create secrets.yaml next to the config with wifi_ssid / wifi_password
+esphome run zavepower_smartbox.yaml   # first flash over USB, OTA thereafter
+esphome logs zavepower_smartbox.yaml  # view logs
+```
+
+Then add it to Home Assistant as in step 7 above.
 
 The config ships with a representative set of spa entities; see
 `test_balboa_spa_component.yaml` for the full list you can add.
