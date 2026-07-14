@@ -3,15 +3,23 @@
 #           ESP32-S3-WROOM-1.
 #
 # Before flashing, replace the pin values in `substitutions` below with the
-# values confirmed using the discovery firmware (see README "Zavepower SmartBox").
+# values confirmed for your board revision (see README "Zavepower SmartBox").
 # Put your real WiFi credentials in secrets.yaml (wifi_ssid / wifi_password).
 
 substitutions:
   device_name: zavepower-spa
-  # --- Pins: confirm with the discovery firmware, then replace these defaults ---
-  status_led_pin: GPIO15   # from zavepower_led_discovery.yaml
-  spa_rx_pin: GPIO44       # from zavepower_uart_discovery.yaml
-  spa_tx_pin: GPIO43       # from zavepower_uart_discovery.yaml
+  # --- Pins confirmed on-hardware (2026-07-03) via continuity to the ADM3483
+  #     RS-485 transceiver + blinking candidate LED GPIOs ---
+  # Spa RS-485 UART (Analog Devices ADM3483, half-duplex). NOTE: the RX/TX pins
+  # also drive the board's red/green LEDs, so those act as RX/TX activity
+  # indicators and are NOT separately controllable.
+  spa_rx_pin: GPIO18       # ADM3483 RO (pin 1); also the red RX-activity LED
+  spa_tx_pin: GPIO17       # ADM3483 DI (pin 4); also the green TX-activity LED
+  spa_de_pin: GPIO6        # ADM3483 /RE+DE direction (driven HIGH to transmit)
+  # Discrete RGB LED — common-anode (active-low); pin↔color confirmed on hardware.
+  rgb_red_pin: GPIO1       # RGB red channel
+  rgb_green_pin: GPIO2     # RGB green channel
+  rgb_blue_pin: GPIO42     # RGB blue channel
 
 esphome:
   name: ${device_name}
@@ -47,6 +55,7 @@ uart:
   id: spa_uart_bus
   rx_pin: ${spa_rx_pin}
   tx_pin: ${spa_tx_pin}
+  flow_control_pin: ${spa_de_pin}   # ADM3483 half-duplex direction (/RE + DE)
   data_bits: 8
   parity: NONE
   stop_bits: 1
@@ -56,15 +65,42 @@ uart:
 balboa_spa:
   id: spa
   # Set this to C or F based on the units your spa is configured for.
-  spa_temp_scale: F
+  # Confirmed on-hardware (2026-07-06): the spa topside panel is set to Celsius,
+  # so the protocol encodes temperature as °C × 2 (half-degree resolution).
+  spa_temp_scale: C
 
-# Onboard Status LED as a firmware health indicator: solid when healthy,
-# blink patterns for WiFi/API problems.
-# If discovery showed the LED is active-low, set inverted: true below.
-status_led:
-  pin:
-    number: ${status_led_pin}
-    inverted: false
+# --- Onboard LEDs ---
+# The red (GPIO18) and green (GPIO17) single LEDs sit directly on the UART
+# RX/TX lines, so they blink automatically as RS-485 receive/transmit activity
+# indicators. They are NOT separately controllable — those pins are the spa UART.
+#
+# Discrete RGB LED — exposed to Home Assistant as a full-color light.
+# Common-anode (active-low): each PWM (ledc) pin is inverted, so light-off =
+# pins high = LED dark (not white). Pin↔color mapping confirmed on hardware.
+output:
+  - platform: ledc
+    pin:
+      number: ${rgb_red_pin}
+      inverted: true
+    id: rgb_red
+  - platform: ledc
+    pin:
+      number: ${rgb_green_pin}
+      inverted: true
+    id: rgb_green
+  - platform: ledc
+    pin:
+      number: ${rgb_blue_pin}
+      inverted: true
+    id: rgb_blue
+
+# Full-color RGB LED exposed to Home Assistant.
+light:
+  - platform: rgb
+    name: "Onboard Status LED"
+    red: rgb_red
+    green: rgb_green
+    blue: rgb_blue
 
 # --- Representative spa entities. The full set of available entities is in
 #     test_balboa_spa_component.yaml. ---
@@ -73,9 +109,9 @@ climate:
     balboa_spa_id: spa
     name: "Spa Thermostat"
     visual:
-      min_temperature: 62 °F
-      max_temperature: 105 °F
-      temperature_step: 0.5 °F
+      min_temperature: 16 °C
+      max_temperature: 40 °C
+      temperature_step: 0.5 °C
 
 switch:
   - platform: balboa_spa
@@ -84,6 +120,72 @@ switch:
       name: "Jet 1"
     light:
       name: "Lights"
+    # High/Low temperature range (wire code 0x50). ON = high range.
+    highrange:
+      name: "Temperature Range (High)"
+    # Filter cycle 2 enable. ON registers a second daily filtration window
+    # (its start/duration are set via the text: block below).
+    filter2:
+      name: "Filter 2 Enable"
+    # --- Hardware-dependent extras ---
+    # These controls only do something if the spa physically has the pump/light.
+    # The spa advertises what it has in its config broadcast; toggling a control
+    # for absent hardware is a harmless no-op. Confirm on your spa (watch the
+    # component logs / topside panel) before uncommenting.
+    # jet2:
+    #   name: "Jet 2"
+    # jet3:
+    #   name: "Jet 3"
+    # jet4:
+    #   name: "Jet 4"
+    # light2:
+    #   name: "Lights 2"
+    # blower:
+    #   name: "Blower"
+
+  # Ready/Rest heat mode. The Balboa protocol has no direct heater command and
+  # no native switch for this, so expose it via a template switch that drives
+  # the spa component's public toggle_heat()/get_restmode() methods.
+  - platform: template
+    name: "Heat Mode (Ready)"
+    icon: "mdi:radiator"
+    # ON = Ready (heats to hold the setpoint anytime).
+    # OFF = Rest (heats only during filter/circulation cycles).
+    # rest_mode==1 means Rest, so Ready = NOT restmode.
+    lambda: |-
+      return !id(spa)->get_restmode();
+    turn_on_action:
+      - lambda: |-
+          if (id(spa)->get_restmode()) id(spa)->toggle_heat();
+    turn_off_action:
+      - lambda: |-
+          if (!id(spa)->get_restmode()) id(spa)->toggle_heat();
+
+# The balboa_spa component has no built-in temperature sensor (water temp is
+# only surfaced through the climate entity above). Expose it as its own sensor
+# via a template that reads the component's public SpaState.
+sensor:
+  - platform: template
+    name: "Water Temperature"
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    update_interval: 10s
+    lambda: |-
+      float t = id(spa)->get_current_state()->current_temp;
+      if (isnan(t)) return {};
+      return t;
+
+  # Fault log details. Populated from the spa's fault history (polled every
+  # 5 min, or on demand via the "Request Fault Log" button below). See the
+  # "Fault Message" / "Fault Log Time" text sensors for the human-readable form.
+  - platform: balboa_spa
+    balboa_spa_id: spa
+    fault_code:
+      name: "Spa Fault Code"
+    fault_days_ago:
+      name: "Spa Fault Days Ago"
 
 binary_sensor:
   - platform: balboa_spa
@@ -92,6 +194,25 @@ binary_sensor:
       name: "Spa Connected"
     heatstate:
       name: "Heating"
+      # Component defaults this to device_class power (plug icon); override with
+      # a flame so it reads as heating.
+      icon: "mdi:fire"
+    # --- Read-only status diagnostics (no hardware cost, pure protocol) ---
+    circulation:
+      name: "Circulation Pump"
+    filter1_running:
+      name: "Filter 1 Running"
+    filter2_running:
+      name: "Filter 2 Running"
+    cleanup_cycle:
+      name: "Cleanup Cycle"
+    # Rest mode active = heater only runs during filter/circulation cycles.
+    # Complements the "Heat Mode (Ready)" switch above (Ready = NOT rest).
+    restmode:
+      name: "Rest Mode"
+    # Hardware-dependent: only meaningful if the spa has a blower (see switch:).
+    # blower:
+    #   name: "Blower"
 
 text_sensor:
   - platform: balboa_spa
@@ -100,26 +221,57 @@ text_sensor:
       name: "Spa Time"
     fault_message:
       name: "Fault Message"
+    # When the most recent logged fault occurred.
+    fault_log_time:
+      name: "Fault Log Time"
+    # Active maintenance reminder (e.g. clean filter / check pH / sanitizer).
+    # Clear it with the "Clear Reminder" button once actioned.
+    reminder:
+      name: "Maintenance Reminder"
+    # Read-back of the current filter cycle schedule (set via the text: block).
+    filter1_config:
+      name: "Filter 1 Config"
+    filter2_config:
+      name: "Filter 2 Config"
+    # Firmware/protocol version reported by the spa.
+    component_version:
+      name: "Spa Component Version"
 
 button:
   - platform: balboa_spa
     balboa_spa_id: spa
     sync_time:
       name: "Sync Spa Time"
+    # Force an immediate re-poll of the spa's fault history (otherwise every
+    # 5 min). Updates the fault_code/fault_days_ago/fault_message entities.
+    request_fault_log:
+      name: "Request Fault Log"
+    # Acknowledge/clear the active maintenance reminder.
+    clear_reminder:
+      name: "Clear Reminder"
 
-# --- Alternative LED behaviors (use instead of the status_led above) ---
-# Both alternatives below need the `output:` block, so uncomment that first,
-# then add EITHER the spa-state automation OR the light block (not both).
-#
-# 1. The shared GPIO output:
-# output:
-#   - platform: gpio
-#     pin:
-#       number: ${status_led_pin}
-#       inverted: false
-#     id: led_output
-#
-# 2a. Spa-state indicator (LED follows the heater) — drive led_output from heatstate:
+# Filter cycle scheduling. Each value is "HH:MM" — start times are wall-clock,
+# durations are elapsed time. Setting a filter 2 time implicitly enables it;
+# use the "Filter 2 Enable" switch above to turn it off.
+text:
+  - platform: balboa_spa
+    balboa_spa_id: spa
+    filter1_start_time:
+      name: "Filter 1 Start Time"
+      mode: TEXT
+    filter1_duration:
+      name: "Filter 1 Duration"
+      mode: TEXT
+    filter2_start_time:
+      name: "Filter 2 Start Time"
+      mode: TEXT
+    filter2_duration:
+      name: "Filter 2 Duration"
+      mode: TEXT
+
+# --- Optional: make the RGB light track spa state instead of being manual ---
+# e.g. turn it red while the heater is running. Drive the rgb channels from a
+# balboa_spa binary_sensor's on_state (this would replace manual HA control):
 # binary_sensor:
 #   - platform: balboa_spa
 #     balboa_spa_id: spa
@@ -127,12 +279,8 @@ button:
 #       name: "Heating"
 #       on_state:
 #         then:
-#           - output.set_level:
-#               id: led_output
-#               level: !lambda 'return x ? 1.0 : 0.0;'
-#
-# 2b. OR a plain controllable light exposed to Home Assistant:
-# light:
-#   - platform: binary
-#     name: "Status LED"
-#     output: led_output
+#           - light.turn_on:
+#               id: status_rgb   # add `id: status_rgb` to the light above
+#               red: 100%
+#               green: 0%
+#               blue: 0%

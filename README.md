@@ -220,37 +220,43 @@ button:
 
 This repo includes an example config for the deprecated Zavepower Energy
 Optimizer / elysics "Pool Sweden SmartBox" board (marking `EB00174-B`), built
-around an ESP32-S3-WROOM-1. It runs the `balboa_spa` component and drives the
-board's onboard Status LED as a firmware health indicator.
+around an ESP32-S3-WROOM-1. It runs the `balboa_spa` component and exposes the
+board's onboard RGB LED to Home Assistant as a controllable light.
 
-### Confirming the GPIO pinout
+### Confirmed GPIO pinout (EB00174 board)
 
-Most of the board's GPIO routing isn't documented, so confirm the pins on your
-own board with the included discovery firmware (flash over USB-C, then watch the
-logs). Run each with `esphome run <file>` and `esphome logs <file>`:
-
-| File | Confirms |
-|---|---|
-| `zavepower_led_discovery.yaml` | Status LED GPIO (and active-high/low polarity) |
-| `zavepower_uart_discovery.yaml` | Spa UART RX/TX pins (edit-and-watch loop) |
-
-Known by convention: Prog button = `GPIO0`, Reset = `EN`, USB-C = native USB.
-
-Record your results here:
+The pins below were confirmed on-hardware. The `substitutions` in
+`zavepower_smartbox.yaml` already use these values, so you shouldn't need to
+change them on the same board revision.
 
 | Signal | GPIO | Notes |
 |---|---|---|
-| Status LED | _GPIO?_ | active-high / active-low |
-| Spa UART RX | _GPIO?_ | |
-| Spa UART TX | _GPIO?_ | |
+| Spa UART RX | `GPIO18` | ADM3483 RO (pin 1); also the **red RX-activity LED** |
+| Spa UART TX | `GPIO17` | ADM3483 DI (pin 4); also the **green TX-activity LED** |
+| Spa UART direction | `GPIO6` | ADM3483 `/RE`+`DE`; `flow_control_pin` (drive HIGH to transmit) |
+| RGB LED — red | `GPIO1` | common-anode (active-low → `inverted: true`) |
+| RGB LED — green | `GPIO2` | common-anode |
+| RGB LED — blue | `GPIO42` | common-anode |
+
+The spa bus is a non-isolated half-duplex RS-485 link via an **Analog Devices
+ADM3483** transceiver. The two single LEDs are wired directly on the UART RX/TX
+lines, so they act as receive/transmit activity indicators (not separately
+controllable). The RGB LED is exposed to Home Assistant as a controllable light.
+
+Known by convention: Prog button = `GPIO0`, Reset = `EN`, USB-C = native USB.
+
+If you have a different board revision, re-confirm the pins before flashing:
+trace the ADM3483 transceiver for the UART pins (RO → RX, DI → TX, `/RE`+`DE` →
+direction), and blink candidate GPIOs to locate the LEDs (noting active-high/low
+polarity).
 
 ### Using the config
 
 1. Put your WiFi credentials in `secrets.yaml` (`wifi_ssid`, `wifi_password`).
-2. In `zavepower_smartbox.yaml`, set the pin values in `substitutions` to the
-   values you confirmed above. If the LED is active-low, set the `status_led`
-   `inverted: true`.
-3. Flash over USB-C: `esphome run zavepower_smartbox.yaml`.
+2. On the same board revision the `substitutions` are already correct; on a
+   different revision, update them with the pins you confirmed above.
+3. Flash over USB-C: `esphome run zavepower_smartbox.yaml`. After the first
+   flash, logs and OTA updates work over WiFi.
 
 The config ships with a representative set of spa entities; see
 `test_balboa_spa_component.yaml` for the full list you can add.
