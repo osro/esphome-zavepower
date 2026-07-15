@@ -5,6 +5,11 @@ There are a ton of these implementations on Github.  None of the ones I could fi
 
 All components are optional (climate, switch, text_sensor, etc).  So you only need to import what you want with your implementation.
 
+> **Using a Zavepower Energy Optimizer / Pool Sweden SmartBox?** This repo ships
+> a ready-to-use config for that board (ESP32-S3, `EB00174-B`) with a full
+> wiring, powering, and setup walkthrough — jump to
+> [Zavepower Energy Optimizer](#zavepower-energy-optimizer-esp32-s3-wroom-1).
+
 ### CRC Errors
 I and multiple other users see a ton of CRC errors.  I've spent some time investigating the serial bit stream and all the cases I've identified have been bit flipping.  This might be invalid UART config (baud, buffer, etc) or a bad hardware design. However, I'm assuming this is just due to the noisy nature of running next heaters and pumps.
 **Note: CRC errors can be silenced specifically - see Troubleshooting section below.**
@@ -216,7 +221,7 @@ button:
       name: "Clear Reminder"
 ```
 
-## Zavepower SmartBox (ESP32-S3-WROOM-1)
+## Zavepower Energy Optimizer (ESP32-S3-WROOM-1)
 
 This repo includes a ready-to-use config for the deprecated Zavepower Energy
 Optimizer / elysics "Pool Sweden SmartBox" board (marking `EB00174-B`), built
@@ -224,9 +229,15 @@ around an ESP32-S3-WROOM-1. It runs the `balboa_spa` component and turns the
 board into a WiFi bridge between your Balboa spa and Home Assistant, and it
 exposes the board's onboard RGB LED as a controllable light.
 
+> ⚠️ **This permanently erases the original Zavepower firmware.** Flashing
+> ESPHome overwrites the stock firmware, and there is **no way to restore it** —
+> no backup or factory image is available, so the board will no longer work with
+> the original Zavepower/Pool Sweden cloud service or app. **Proceed entirely at
+> your own risk.**
+
 ### The board
 
-![Zavepower SmartBox EB00174-B board](docs/images/zavepower_image_board.jpg)
+![Zavepower Energy Optimizer EB00174-B board](docs/images/zavepower_image_board.jpg)
 
 Key features to locate on your board:
 
@@ -249,14 +260,14 @@ setup you power the board one of two ways *and* plug in USB-C for flashing.
 
 Feed 14 V into the 2-pin power connector: **red = 14 V, black = GND**.
 
-![Powering the SmartBox from an external 14 V supply](docs/images/zavepower_image_power_using_external.png)
+![Powering the Energy Optimizer from an external 14 V supply](docs/images/zavepower_image_power_using_external.png)
 
 **Option B — power from the spa harness (in place, on the spa)**
 
 The spa's own 4-pin cable already provides 14 V and GND, so once the board is
 wired to the spa it is powered by the spa. Plug in USB-C for flashing.
 
-![Powering the SmartBox from the spa connection while programming over USB](docs/images/zavepower_image_power_using_spaconnection.jpg)
+![Powering the Energy Optimizer from the spa connection while programming over USB](docs/images/zavepower_image_power_using_spaconnection.jpg)
 
 > ⚠️ **Never connect both** the external supply **and** the spa harness 14 V at
 > the same time — pick one power source. USB-C can stay connected in either case.
@@ -264,7 +275,7 @@ wired to the spa it is powered by the spa. Plug in USB-C for flashing.
 ### Confirmed GPIO pinout (EB00174 board)
 
 The pins below were confirmed on-hardware. The `substitutions` in
-`zavepower_smartbox.yaml` already use these values, so you shouldn't need to
+`zavepower_energy_optimizer.yaml` already use these values, so you shouldn't need to
 change them on the same board revision.
 
 | Signal | GPIO | Notes |
@@ -294,7 +305,7 @@ This is the easiest path if you run Home Assistant OS/Supervised: you do
 everything from the **ESPHome Device Builder** add-on's web UI in your browser,
 and only need USB for the very first flash.
 
-**1. Wire up the board.** Connect the SmartBox to the spa's 4-pin harness (this
+**1. Wire up the board.** Connect the Energy Optimizer to the spa's 4-pin harness (this
 supplies 14 V + RS-485) *or*, for bench setup, feed 14 V into the 2-pin power
 connector (red = 14 V, black = GND). See [Powering the board](#powering-the-board)
 above. Use only one 14 V source.
@@ -309,7 +320,7 @@ and **Skip** the wizard's WiFi step for now (you'll paste the full config next).
 This generates an entry and its API/OTA keys in `secrets.yaml`.
 
 **4. Paste in this config.** Click **Edit** on the new device and replace its
-contents with `zavepower_smartbox.yaml` from this repo. Then set your WiFi in the
+contents with `zavepower_energy_optimizer.yaml` from this repo. Then set your WiFi in the
 ESPHome dashboard's **Secrets** editor (top-right menu → **Secrets**):
 
 ```yaml
@@ -349,8 +360,8 @@ If you don't run the Home Assistant add-on, you can use the ESPHome CLI instead:
 ```bash
 pip install esphome
 # create secrets.yaml next to the config with wifi_ssid / wifi_password
-esphome run zavepower_smartbox.yaml   # first flash over USB, OTA thereafter
-esphome logs zavepower_smartbox.yaml  # view logs
+esphome run zavepower_energy_optimizer.yaml   # first flash over USB, OTA thereafter
+esphome logs zavepower_energy_optimizer.yaml  # view logs
 ```
 
 Then add it to Home Assistant as in step 7 above.

@@ -1,9 +1,9 @@
-# Zavepower SmartBox example config
+# Zavepower Energy Optimizer example config
 # Hardware: elysics "Pool Sweden SmartBox" PCBA (board marking EB00174-B),
 #           ESP32-S3-WROOM-1.
 #
 # Before flashing, replace the pin values in `substitutions` below with the
-# values confirmed for your board revision (see README "Zavepower SmartBox").
+# values confirmed for your board revision (see README "Zavepower Energy Optimizer").
 # Put your real WiFi credentials in secrets.yaml (wifi_ssid / wifi_password).
 
 substitutions:
