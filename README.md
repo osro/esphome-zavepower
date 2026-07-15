@@ -247,14 +247,19 @@ Key features to locate on your board:
   to/from the spa controller (bottom center).
 - **Prog** button — hold to enter the ESP32 bootloader.
 - **Reset** button — reboots the board.
-- **Status** button + **RGB LED** — the RGB LED is exposed to Home Assistant.
+- **RGB LED** (labelled *Status*) — a full-color LED exposed to Home Assistant.
+  You can drive it yourself to signal whatever you like — e.g. define your own
+  color codes for heating, filtering, or fault states (see the commented example
+  at the bottom of `zavepower_energy_optimizer.yaml`). Note that once the board
+  is installed the LED is normally hidden inside the enclosure, so it's mostly
+  useful during bench testing.
 
 ### Powering the board
 
 The ESP32 side needs **14 V** on the power input; the onboard buck converter
 steps it down to 3.3 V. **USB-C is used for programming/logs only** and does not
-reliably power the full board (the RS-485 transceiver in particular). So during
-setup you power the board one of two ways *and* plug in USB-C for flashing.
+power the board. So during setup you power the board one of two ways *and* plug
+in USB-C for flashing.
 
 **Option A — external bench supply (recommended for setup on the bench)**
 
