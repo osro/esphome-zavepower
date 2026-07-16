@@ -49,7 +49,7 @@ external_components:
   - source:
       type: git
       url: https://github.com/brianfeucht/esphome-balboa-spa
-      ref: main
+      ref: v2.24
 
 uart:
   id: spa_uart_bus
@@ -102,8 +102,8 @@ light:
     green: rgb_green
     blue: rgb_blue
 
-# --- Representative spa entities. The full set of available entities is in
-#     test_balboa_spa_component.yaml. ---
+# --- Representative spa entities. The full set of available entities is
+#     documented in the upstream esphome-balboa-spa repo. ---
 climate:
   - platform: balboa_spa
     balboa_spa_id: spa

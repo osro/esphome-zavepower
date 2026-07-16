@@ -29,7 +29,7 @@ external_components:
   - source:
      type: git
      url: https://github.com/brianfeucht/esphome-balboa-spa
-     ref: main
+     ref: v2.24
 
 # API and Time required for Sync Spa Time Button. 
 api:
@@ -376,8 +376,9 @@ esphome logs zavepower_energy_optimizer.yaml  # view logs
 
 Then add it to Home Assistant as in step 7 above.
 
-The config ships with a representative set of spa entities; see
-`test_balboa_spa_component.yaml` for the full list you can add.
+The config ships with a representative set of spa entities; see the
+[upstream esphome-balboa-spa repo](https://github.com/brianfeucht/esphome-balboa-spa)
+for the full list of entities you can add.
 
 ## Fault Monitoring
 
@@ -748,24 +749,7 @@ The text sensors display current spa status:
 - **filter1_config**: Current filter 1 configuration in JSON format
 - **filter2_config**: Current filter 2 configuration in JSON format (or "disabled")
 
-## Development & CI
-
-### Manual CI Builds
-
-The CI workflow can be manually triggered to test compatibility with specific ESPHome versions:
-
-1. Go to the [Actions tab](../../actions/workflows/ci.yml)
-2. Click "Run workflow"
-3. Select the `main` branch
-4. Optionally specify an ESPHome version (e.g., `2025.11.0`, `dev`, or leave as `stable`)
-5. Click "Run workflow"
-
-This is useful for:
-- Testing compatibility with newly released ESPHome versions
-- Validating changes against development versions
-- Quick verification without waiting for automatic triggers
-
-The workflow builds all test configurations (ESP32 Arduino, ESP32 IDF, and ESP8266) to ensure broad platform compatibility.
+## Screenshots
 
 ### ESP WebUI
 ![image](https://github.com/user-attachments/assets/af602be2-da9e-4880-8fb8-e7f7f9122977)

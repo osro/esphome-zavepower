@@ -42,3 +42,6 @@ _codeql_detected_source_root
 .build/
 .venv/
 /secrets.yaml
+
+# Editor / assistant local state
+.claude/
