@@ -235,6 +235,11 @@ exposes the board's onboard RGB LED as a controllable light.
 > the original Zavepower/Pool Sweden cloud service or app. **Proceed entirely at
 > your own risk.**
 
+> **Tested hardware:** This has been tested on a **Novitek Luosto S** spa. That
+> is the only spa I have access to, so I have no way to test any other spa models
+> — other Balboa-based spas will likely work, but I can't verify them. Reports
+> (and PRs) from other spas are welcome.
+
 ### The board
 
 ![Zavepower Energy Optimizer EB00174-B board](docs/images/zavepower_image_board.jpg)
