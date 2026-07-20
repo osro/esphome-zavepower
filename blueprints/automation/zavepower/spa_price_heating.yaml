@@ -1,0 +1,264 @@
+blueprint:
+  name: Zavepower Spa – Spot-Price Heating Control
+  description: >-
+    Drive the spa harder when electricity is cheap and back it off when it's
+    expensive. When the price is "acceptable" on the selected days, the spa is
+    put into aggressive-heat mode (High temperature range + Heat Mode Ready);
+    otherwise it drops to eco (Low range + Rest).
+
+
+    The price source is generic — it is NOT tied to Nord Pool. Point it at any
+    binary sensor that is "on" when the price is acceptable. If you don't have
+    such a sensor, leave it empty and instead pick a numeric price sensor plus a
+    threshold; the blueprint will decide acceptability itself.
+
+
+    How it runs: the blueprint re-evaluates on a timer (default every 5 minutes),
+    not on state changes. This keeps it robust when the price inputs are optional
+    and also handles the day rollover at midnight. A hot tub has plenty of thermal
+    inertia, so a few minutes of latency is harmless; tune it with "Re-evaluation
+    interval" if you want.
+  domain: automation
+  source_url: https://github.com/osro/esphome-zavepower/blob/main/blueprints/automation/zavepower/spa_price_heating.yaml
+  input:
+    price_source:
+      name: Price source
+      icon: mdi:cash-clock
+      description: How the blueprint decides the price is acceptable.
+      input:
+        price_acceptable_sensor:
+          name: Price-acceptable binary sensor (primary)
+          description: >-
+            A binary sensor that is "on" when the electricity price is
+            acceptable. Works with any integration. If set, the numeric fallback
+            below is ignored.
+          default: {}
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+        price_sensor:
+          name: Price sensor (fallback)
+          description: >-
+            Numeric current-price sensor. Only used when no binary sensor is
+            chosen above.
+          default: {}
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        price_threshold:
+          name: Price threshold (fallback)
+          description: >-
+            Threshold compared against the price sensor, in that sensor's own
+            units (e.g. c/kWh or EUR/MWh). Only used with the fallback.
+          default: 5
+          selector:
+            number:
+              min: -100
+              max: 1000
+              step: 0.1
+              mode: box
+        price_comparison:
+          name: Acceptable when price is… (fallback)
+          description: Which side of the threshold counts as acceptable.
+          default: at_or_below
+          selector:
+            select:
+              options:
+                - label: At or below the threshold (cheap = acceptable)
+                  value: at_or_below
+                - label: At or above the threshold
+                  value: at_or_above
+
+    spa_control:
+      name: Spa controls
+      icon: mdi:hot-tub
+      input:
+        heat_mode_switch:
+          name: Heat Mode (Ready) switch
+          description: >-
+            The spa's Ready/Rest switch. Turned on (Ready) when heating,
+            off (Rest) in eco.
+          selector:
+            entity:
+              filter:
+                - domain: switch
+        high_range_switch:
+          name: High temperature range switch (optional)
+          description: >-
+            The spa's High/Low temperature range switch. Turned on (High) when
+            heating, off (Low) in eco. Leave empty if your spa has no range
+            switch.
+          default: {}
+          selector:
+            entity:
+              filter:
+                - domain: switch
+        stagger_delay:
+          name: Stagger between commands
+          description: >-
+            Delay between the two switch commands. The spa bus is slow
+            half-duplex RS-485, so back-to-back commands can collide. Only used
+            when the high-range switch is set.
+          default: 10
+          selector:
+            number:
+              min: 0
+              max: 60
+              step: 1
+              unit_of_measurement: seconds
+              mode: slider
+
+    gating:
+      name: When to act
+      icon: mdi:calendar-clock
+      input:
+        active_days:
+          name: Active days
+          description: >-
+            Days on which heating is allowed. On other days the spa is kept in
+            eco. Default is every day.
+          default:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          selector:
+            select:
+              multiple: true
+              options:
+                - label: Monday
+                  value: mon
+                - label: Tuesday
+                  value: tue
+                - label: Wednesday
+                  value: wed
+                - label: Thursday
+                  value: thu
+                - label: Friday
+                  value: fri
+                - label: Saturday
+                  value: sat
+                - label: Sunday
+                  value: sun
+        enable_toggle:
+          name: Master enable toggle (optional)
+          description: >-
+            An input_boolean that turns price control on/off. When OFF, the spa
+            is forced to eco. Leave empty to always run.
+          default: {}
+          selector:
+            entity:
+              filter:
+                - domain: input_boolean
+        connected_sensor:
+          name: Spa-connected sensor (optional)
+          description: >-
+            If set, the blueprint does nothing while this binary sensor is off
+            (spa unreachable). Leave empty to skip the check.
+          default: {}
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+        poll_interval:
+          name: Re-evaluation interval
+          description: How often to re-check the price and adjust the spa.
+          default: "/5"
+          selector:
+            select:
+              options:
+                - label: Every minute
+                  value: "/1"
+                - label: Every 2 minutes
+                  value: "/2"
+                - label: Every 5 minutes
+                  value: "/5"
+                - label: Every 10 minutes
+                  value: "/10"
+                - label: Every 15 minutes
+                  value: "/15"
+                - label: Every 30 minutes
+                  value: "/30"
+
+mode: single
+max_exceeded: silent
+
+variables:
+  price_acceptable_sensor: !input price_acceptable_sensor
+  price_sensor: !input price_sensor
+  price_threshold: !input price_threshold
+  price_comparison: !input price_comparison
+  enable_toggle: !input enable_toggle
+  connected_sensor: !input connected_sensor
+  high_range_switch: !input high_range_switch
+  active_days: !input active_days
+  # Compute everything in one template so intermediate values stay real booleans
+  # (a variable holding the string "False" would be truthy and break `and`).
+  should_heat: >-
+    {% if price_acceptable_sensor %}
+      {% set acceptable = is_state(price_acceptable_sensor, 'on') %}
+    {% elif price_sensor %}
+      {% set p = states(price_sensor) | float(none) %}
+      {% if p is none %}
+        {% set acceptable = false %}
+      {% elif price_comparison == 'at_or_above' %}
+        {% set acceptable = p >= price_threshold %}
+      {% else %}
+        {% set acceptable = p <= price_threshold %}
+      {% endif %}
+    {% else %}
+      {% set acceptable = false %}
+    {% endif %}
+    {% set enabled = (not enable_toggle) or is_state(enable_toggle, 'on') %}
+    {% set day_ok = now().strftime('%a').lower() in active_days %}
+    {{ acceptable and enabled and day_ok }}
+
+triggers:
+  - trigger: time_pattern
+    minutes: !input poll_interval
+
+conditions:
+  # Do nothing while the spa is unreachable (commands would fail anyway).
+  - condition: template
+    value_template: "{{ not connected_sensor or is_state(connected_sensor, 'on') }}"
+
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ should_heat }}"
+        sequence:
+          # Aggressive heat: High range (if present), stagger, then Ready.
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ high_range_switch }}"
+                sequence:
+                  - action: switch.turn_on
+                    target:
+                      entity_id: !input high_range_switch
+                  - delay:
+                      seconds: !input stagger_delay
+          - action: switch.turn_on
+            target:
+              entity_id: !input heat_mode_switch
+    default:
+      # Eco: Low range (if present), stagger, then Rest.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ high_range_switch }}"
+            sequence:
+              - action: switch.turn_off
+                target:
+                  entity_id: !input high_range_switch
+              - delay:
+                  seconds: !input stagger_delay
+      - action: switch.turn_off
+        target:
+          entity_id: !input heat_mode_switch
