@@ -1,0 +1,76 @@
+blueprint:
+  name: Zavepower Spa – Daily Clock Sync
+  description: >-
+    Keep the spa's internal clock aligned with Home Assistant by pressing the
+    spa's "Sync Spa Time" button once a day. The spa controller's clock drifts
+    over time (and resets after a power cut), which throws off filter-cycle
+    scheduling — a daily nudge keeps it accurate.
+
+
+    Designed for the Zavepower Energy Optimizer / esphome-balboa-spa setup, but
+    works with any device that exposes a "sync time" button.
+  domain: automation
+  source_url: https://github.com/osro/esphome-zavepower/blob/main/blueprints/automation/zavepower/spa_time_sync.yaml
+  input:
+    sync_button:
+      name: Sync Spa Time button
+      description: The spa's "Sync Spa Time" button entity.
+      selector:
+        entity:
+          filter:
+            - domain: button
+    sync_time:
+      name: Sync time
+      description: Time of day to sync the spa clock. Noon is a safe default (spa awake, off-peak).
+      default: "12:00:00"
+      selector:
+        time: {}
+    require_connected:
+      name: Only sync when connected
+      description: >-
+        Skip the sync if the spa isn't reachable. Recommended — pressing the
+        button while disconnected does nothing and just leaves the clock stale
+        until the next run.
+      default: true
+      selector:
+        boolean: {}
+    connected_sensor:
+      name: Spa Connected sensor
+      description: >-
+        The spa's connectivity binary sensor. Only used when "Only sync when
+        connected" is enabled.
+      default: {}
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+
+mode: single
+max_exceeded: silent
+
+triggers:
+  - trigger: time
+    at: !input sync_time
+
+conditions:
+  - condition: or
+    conditions:
+      # Connection check disabled → always allow.
+      - condition: template
+        value_template: "{{ not require_connected }}"
+      # Connection check enabled → require the sensor to be on.
+      - condition: and
+        conditions:
+          - condition: template
+            value_template: "{{ require_connected }}"
+          - condition: state
+            entity_id: !input connected_sensor
+            state: "on"
+
+actions:
+  - action: button.press
+    target:
+      entity_id: !input sync_button
+
+variables:
+  require_connected: !input require_connected
