@@ -1,5 +1,12 @@
 # Zavepower Energy Optimizer → Home Assistant (ESPHome)
 
+> ⚠️ **Unofficial, community open-source project.** This is **not** affiliated
+> with, endorsed by, or supported by Zavepower, elysics, Pool Sweden, Balboa, or
+> any spa manufacturer. All product names and trademarks belong to their
+> respective owners. This is independent open-source work provided **as-is under
+> the [MIT License](LICENSE), with no warranty** — use it entirely at your own
+> risk (see the flashing warning below).
+
 A ready-to-use [ESPHome](https://esphome.io) config that reflashes the deprecated
 **Zavepower Energy Optimizer** / elysics "Pool Sweden SmartBox" board (marking
 `EB00174-B`, built around an ESP32-S3-WROOM-1) and turns it into a WiFi bridge
