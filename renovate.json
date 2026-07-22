@@ -1,0 +1,16 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Track the balboa_spa ESPHome external component pinned via `ref:` in the device config",
+      "managerFilePatterns": ["/^zavepower_energy_optimizer\\.yaml$/"],
+      "matchStrings": [
+        "url:\\s+https://github\\.com/(?<depName>[^\\s]+)\\s+ref:\\s+(?<currentValue>v[0-9][0-9.]*)"
+      ],
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "loose"
+    }
+  ]
+}
