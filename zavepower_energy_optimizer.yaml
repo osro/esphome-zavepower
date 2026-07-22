@@ -39,10 +39,12 @@ wifi:
 api:
   # Encrypts + authenticates the Home Assistant <-> device API connection.
   # Generate your own 32-byte base64 key and put it in secrets.yaml as
-  # `api_encryption_key` (e.g. `openssl rand -base64 32`, or use the key the
-  # ESPHome dashboard offers when you add the device). Keep it secret.
+  # `spa_api_key` (e.g. `openssl rand -base64 32`, or use the key the ESPHome
+  # dashboard offers when you add the device). A device-specific secret name
+  # (rather than a generic `api_encryption_key`) keeps each device's key
+  # separate. Keep it secret.
   encryption:
-    key: !secret api_encryption_key
+    key: !secret spa_api_key
 
 ota:
   - platform: esphome

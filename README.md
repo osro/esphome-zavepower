@@ -130,23 +130,21 @@ ESPHome dashboard's **Secrets** editor (top-right menu → **Secrets**):
 ```yaml
 wifi_ssid: "YourNetwork"
 wifi_password: "YourPassword"
-api_encryption_key: "your-32-byte-base64-key"
+spa_api_key: "your-32-byte-base64-key"
 ```
 
-The `api_encryption_key` encrypts the Home Assistant ↔ device API connection
-(otherwise the device shows as **Not encrypted** in the ESPHome dashboard). Add
-all three secrets as **Shared** secrets — `!secret` in the config resolves
-against the shared `secrets.yaml`, so a per-device secret won't be found.
+The `spa_api_key` encrypts the Home Assistant ↔ device API connection (otherwise
+the device shows as **Not encrypted** in the ESPHome dashboard). Add all three as
+**Shared** secrets — `!secret` in the config resolves against the shared
+`secrets.yaml`.
 
-For the key itself:
-
-- **It may already exist.** When you created the device in step 3, the ESPHome
-  wizard likely generated an `api_encryption_key` in `secrets.yaml` already —
-  check the Secrets editor before making a new one. (Pasting this repo's config
-  over the wizard's in step 4 only replaces the config, not your secrets.)
-- **If it's missing**, add a Shared secret named `api_encryption_key` with a
-  32-byte base64 value — generate one with `openssl rand -base64 32`, or copy the
-  key the ESPHome dashboard offers when adding a device.
+A **device-specific secret name** like `spa_api_key` is recommended over a generic
+`api_encryption_key` so each ESPHome device has its own key instead of sharing
+one. Generate a 32-byte base64 value with `openssl rand -base64 32`, or copy the
+key the ESPHome dashboard offers when adding a device. If the wizard already
+generated an encryption key for this device back in step 3, you can reuse that
+value — just make sure the secret name matches the `!secret` in the config
+(rename it to `spa_api_key`, or change the config to reference the wizard's name).
 
 Home Assistant will ask for this key when it adds the device (step 7); if the
 device was already added unencrypted, HA prompts you to re-authenticate after the
