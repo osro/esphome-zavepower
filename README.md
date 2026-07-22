@@ -134,10 +134,23 @@ api_encryption_key: "your-32-byte-base64-key"
 ```
 
 The `api_encryption_key` encrypts the Home Assistant ↔ device API connection
-(otherwise the device shows as **Not encrypted**). Generate your own 32-byte
-base64 key with `openssl rand -base64 32`, or copy the key the ESPHome dashboard
-offers when you add the device. Home Assistant will ask for this key when it
-adds the device (step 7). Keep it secret and don't commit `secrets.yaml`.
+(otherwise the device shows as **Not encrypted** in the ESPHome dashboard). Add
+all three secrets as **Shared** secrets — `!secret` in the config resolves
+against the shared `secrets.yaml`, so a per-device secret won't be found.
+
+For the key itself:
+
+- **It may already exist.** When you created the device in step 3, the ESPHome
+  wizard likely generated an `api_encryption_key` in `secrets.yaml` already —
+  check the Secrets editor before making a new one. (Pasting this repo's config
+  over the wizard's in step 4 only replaces the config, not your secrets.)
+- **If it's missing**, add a Shared secret named `api_encryption_key` with a
+  32-byte base64 value — generate one with `openssl rand -base64 32`, or copy the
+  key the ESPHome dashboard offers when adding a device.
+
+Home Assistant will ask for this key when it adds the device (step 7); if the
+device was already added unencrypted, HA prompts you to re-authenticate after the
+next flash — paste the same key. Keep it secret and don't commit `secrets.yaml`.
 
 Check the temperature scale: `spa_temp_scale` is `C` by default — change it to
 `F` if your spa topside panel is in Fahrenheit. (On a different board revision,
