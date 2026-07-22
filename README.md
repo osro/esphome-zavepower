@@ -103,6 +103,41 @@ trace the ADM3483 transceiver for the UART pins (RO → RX, DI → TX, `/RE`+`DE
 direction), and blink candidate GPIOs to locate the LEDs (noting active-high/low
 polarity).
 
+## Two ways to use this config
+
+- **Import as a versioned project (gets update notifications).** Your device
+  config is a small wrapper that pulls this repo in as a package, pinned to the
+  floating `v1` tag. When a new `1.x` release is tagged here, the ESPHome
+  dashboard shows **Update Available** on your device — one click to rebuild and
+  OTA. See [Import as a versioned project](#import-as-a-versioned-project).
+- **Paste the full config (simple, no auto-updates).** Copy
+  `zavepower_energy_optimizer.yaml` into your device and edit it directly. This is
+  the [step-by-step setup](#step-by-step-setup-esphome-dashboard-in-home-assistant--recommended)
+  below.
+
+Both use the same config; the import method just tracks releases automatically.
+
+### Import as a versioned project
+
+Create a new device in the ESPHome dashboard and replace its config with this
+thin wrapper (set the name to whatever you like):
+
+```yaml
+substitutions:
+  name: zavepower-spa
+packages:
+  osro.zavepower-spa: github://osro/esphome-zavepower/zavepower_energy_optimizer.yaml@v1
+esphome:
+  name: "${name}"
+```
+
+Then add your secrets (`wifi_ssid`, `wifi_password`, `spa_api_key` — see
+[step 4](#step-by-step-setup-esphome-dashboard-in-home-assistant--recommended)
+below) and install. On a different board revision, override the pin
+`substitutions` in the wrapper too. From then on, new releases surface as an
+update badge in the dashboard. To pin to an exact release instead of tracking
+`1.x`, use a full tag like `@v1.0.0`.
+
 ## Step-by-step setup (ESPHome Dashboard in Home Assistant — recommended)
 
 This is the easiest path if you run Home Assistant OS/Supervised: you do
@@ -198,6 +233,21 @@ provided by the `balboa_spa` component is documented in the
 
 To pull in newer component fixes later, bump the `ref:` in the config's
 `external_components:` block from `v2.24` to a newer upstream tag.
+
+## Releasing (maintainers)
+
+Versioning is automated with [release-please](https://github.com/googleapis/release-please).
+Commits on `main` use [Conventional Commits](https://www.conventionalcommits.org)
+(`feat:`, `fix:`, `docs:`, …); release-please keeps a "release" PR open that
+bumps `esphome.project.version` in `zavepower_energy_optimizer.yaml` (the
+`# x-release-please-version` line) and updates the changelog. Merging that PR
+tags a new `vX.Y.Z` release, and the workflow moves the floating major tag
+(`vX`) that `dashboard_import` / package imports point at — which is what makes
+followers' dashboards show **Update Available**.
+
+`fix:`/`feat:` bump the patch/minor version; a `!` or `BREAKING CHANGE` bumps the
+major, in which case update `dashboard_import` and the README wrapper to the new
+`vN` tag.
 
 ## Troubleshooting
 

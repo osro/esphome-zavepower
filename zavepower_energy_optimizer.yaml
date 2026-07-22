@@ -7,7 +7,7 @@
 # Put your real WiFi credentials in secrets.yaml (wifi_ssid / wifi_password).
 
 substitutions:
-  device_name: zavepower-spa
+  name: zavepower-spa
   # --- Pins confirmed on-hardware (2026-07-03) via continuity to the ADM3483
   #     RS-485 transceiver + blinking candidate LED GPIOs ---
   # Spa RS-485 UART (Analog Devices ADM3483, half-duplex). NOTE: the RX/TX pins
@@ -22,7 +22,20 @@ substitutions:
   rgb_blue_pin: GPIO42     # RGB blue channel
 
 esphome:
-  name: ${device_name}
+  name: ${name}
+  # Published as a versioned ESPHome project so the ESPHome dashboard can show
+  # "Update Available" when a new release is tagged. `version` is bumped
+  # automatically by release-please (see .github/workflows/release.yml).
+  project:
+    name: "osro.zavepower-spa"
+    version: "1.0.0" # x-release-please-version
+
+# Lets the ESPHome dashboard adopt this config and notify about new releases.
+# Points at the floating `v1` major tag, which release-please moves forward on
+# each 1.x release; the dashboard re-reads that tag and compares project.version.
+dashboard_import:
+  package_import_url: github://osro/esphome-zavepower/zavepower_energy_optimizer.yaml@v1
+  import_full_config: false
 
 esp32:
   board: esp32-s3-devkitc-1

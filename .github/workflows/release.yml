@@ -1,0 +1,45 @@
+name: Release
+
+# Versioning is automated with release-please. Merging Conventional-Commit
+# changes to main (feat:, fix:, ...) makes release-please open/maintain a
+# "release" PR that bumps the version in zavepower_energy_optimizer.yaml
+# (the `# x-release-please-version` line) and the manifest. Merging that PR
+# tags a new vX.Y.Z release; the job then moves the floating major tag (vX)
+# that dashboard_import points at, so followers' ESPHome dashboards see the
+# new version.
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # After a release is cut, move the floating major tag (e.g. v1) to the
+      # new release so `...@v1` package imports pick it up.
+      - uses: actions/checkout@v4
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          fetch-depth: 0
+
+      - name: Move floating major tag
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          MAJOR: v${{ steps.release.outputs.major }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "$MAJOR" "$TAG"
+          git push origin "$MAJOR" --force
