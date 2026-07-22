@@ -28,7 +28,7 @@ esphome:
   # automatically by release-please (see .github/workflows/release.yml).
   project:
     name: "osro.zavepower-spa"
-    version: "1.0.0" # x-release-please-version
+    version: "1.1.0" # x-release-please-version
 
 # Lets the ESPHome dashboard adopt this config and notify about new releases.
 # Points at the floating `v1` major tag, which release-please moves forward on
