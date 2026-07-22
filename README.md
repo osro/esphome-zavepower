@@ -130,7 +130,14 @@ ESPHome dashboard's **Secrets** editor (top-right menu → **Secrets**):
 ```yaml
 wifi_ssid: "YourNetwork"
 wifi_password: "YourPassword"
+api_encryption_key: "your-32-byte-base64-key"
 ```
+
+The `api_encryption_key` encrypts the Home Assistant ↔ device API connection
+(otherwise the device shows as **Not encrypted**). Generate your own 32-byte
+base64 key with `openssl rand -base64 32`, or copy the key the ESPHome dashboard
+offers when you add the device. Home Assistant will ask for this key when it
+adds the device (step 7). Keep it secret and don't commit `secrets.yaml`.
 
 Check the temperature scale: `spa_temp_scale` is `C` by default — change it to
 `F` if your spa topside panel is in Fahrenheit. (On a different board revision,
