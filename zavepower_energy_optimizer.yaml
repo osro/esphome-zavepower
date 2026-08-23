@@ -134,11 +134,35 @@ climate:
       max_temperature: 40 °C
       temperature_step: 0.5 °C
 
+# --- Jet pumps ---
+# Driven through the `fan` platform rather than `switch:` on purpose.
+#
+# The Balboa protocol only has a *toggle* command, so the component sends a
+# toggle and then retries until the spa reports the state it asked for. The
+# `switch` platform hardcodes its ON target to state 1 (LOW), but many
+# mainboards report a running single-speed pump as state 2 (HIGH) and never 1.
+# On those the target is never matched, so the component keeps toggling — the
+# pump visibly turns on, off, on, off and ends up off a few seconds later.
+# Upstream bug: https://github.com/brianfeucht/esphome-balboa-spa/issues/129
+#
+# The `fan` platform accepts state 2, so requesting speed 2 converges on the
+# first toggle for a single-speed pump (and on the second for a genuine
+# two-speed pump, OFF -> LOW -> HIGH). The fan is `internal` so Home Assistant
+# only sees the plain on/off switch defined further down.
+fan:
+  - platform: balboa_spa
+    balboa_spa_id: spa
+    jet_1:
+      id: jet1_fan
+      internal: true
+      # The spa is the source of truth for pump state; nothing to restore.
+      restore_mode: NO_RESTORE
+    # Add jet_2 / jet_3 / jet_4 here the same way if your spa has them, plus a
+    # matching template switch below.
+
 switch:
   - platform: balboa_spa
     balboa_spa_id: spa
-    jet1:
-      name: "Jet 1"
     light:
       name: "Lights"
     # High/Low temperature range (wire code 0x50). ON = high range.
@@ -153,16 +177,30 @@ switch:
     # The spa advertises what it has in its config broadcast; toggling a control
     # for absent hardware is a harmless no-op. Confirm on your spa (watch the
     # component logs / topside panel) before uncommenting.
-    # jet2:
-    #   name: "Jet 2"
-    # jet3:
-    #   name: "Jet 3"
-    # jet4:
-    #   name: "Jet 4"
+    # NOTE: for extra jets use the `fan:` block above plus a template switch,
+    # not `jet2:`/`jet3:`/`jet4:` here — see the toggle-loop note above.
     # light2:
     #   name: "Lights 2"
     # blower:
     #   name: "Blower"
+
+  # Plain on/off switch for jet 1, backed by the internal fan above. Requests
+  # speed 2 (HIGH) because that is the state a single-speed pump reports; a
+  # two-speed pump will run on high.
+  - platform: template
+    name: "Jet 1"
+    icon: "mdi:fan"
+    # State comes from the spa via the fan, so there is nothing to restore.
+    restore_mode: DISABLED
+    lambda: |-
+      return id(jet1_fan).state;
+    turn_on_action:
+      - fan.turn_on:
+          id: jet1_fan
+          speed: 2
+    turn_off_action:
+      - fan.turn_off:
+          id: jet1_fan
 
   # Ready/Rest heat mode. The Balboa protocol has no direct heater command and
   # no native switch for this, so expose it via a template switch that drives
