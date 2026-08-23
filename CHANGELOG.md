@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/osro/esphome-zavepower/compare/v1.1.0...v1.1.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* drive jet 1 through the fan platform to stop the toggle loop ([#11](https://github.com/osro/esphome-zavepower/issues/11)) ([c0dcbb1](https://github.com/osro/esphome-zavepower/commit/c0dcbb107b851560ac43b24b92a942cddc6f73e7))
+
 ## [1.1.0](https://github.com/osro/esphome-zavepower/compare/v1.0.0...v1.1.0) (2026-07-22)
 
 
