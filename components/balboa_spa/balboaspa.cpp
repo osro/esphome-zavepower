@@ -1,4 +1,5 @@
 #include "balboaspa.h"
+#include <cstring>
 
 namespace esphome
 {

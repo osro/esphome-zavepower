@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.2](https://github.com/osro/esphome-zavepower/compare/v1.1.1...v1.1.2) (2026-09-21)
+
+### Bug Fixes
+
+* Confirm pump, main light, heat mode, and temperature range commands against fresh spa feedback, with bounded retries and support for reversing pending requests.
+* Add Spa Command Pending and Spa Command Failed diagnostics.
+* Maintain Balboa component v2.30 locally with receive-side fixes and correct main-light decoding when both lights are on.
+* Add command-delivery tests and firmware validation; include the C++ header required by Linux builds.
+
+Commands are limited to five transmissions and a 30-second deadline. Hardware validation on a live spa is still required; filter schedules, filter enable, temperature setpoint, blower, and second light retain upstream command behaviour.
+
 ## [1.1.1](https://github.com/osro/esphome-zavepower/compare/v1.1.0...v1.1.1) (2026-08-23)
 
 
