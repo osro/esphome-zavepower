@@ -16,12 +16,12 @@ onboard RGB LED as a controllable light.
 Everything you need is in **`zavepower_energy_optimizer.yaml`** — confirmed GPIO
 pinout, spa UART settings, and a representative set of spa entities.
 
-Spa communication is handled by the **`balboa_spa`** ESPHome external component by
-[brianfeucht/esphome-balboa-spa](https://github.com/brianfeucht/esphome-balboa-spa)
-(pinned to `v2.24`). This repo only provides the board-specific config plus the
-wiring and setup docs below — for the component's own documentation and the full
-list of spa entities you can add (jets, lights, fault log, filter schedules,
-water heater, etc.), see that upstream repo.
+Spa communication uses a maintained copy of
+[brianfeucht/esphome-balboa-spa v2.30](https://github.com/brianfeucht/esphome-balboa-spa/releases/tag/v2.30),
+with confirmed-command delivery for pumps, main light, heat mode, and temperature
+range. The source and upstream license are in `components/balboa_spa`; see
+[component provenance](components/balboa_spa/UPSTREAM.md) for the local changes.
+The device config downloads this component from this repository's `v1` tag.
 
 > ⚠️ **This permanently erases the original Zavepower firmware.** Flashing
 > ESPHome overwrites the stock firmware, and there is **no way to restore it** —
@@ -231,8 +231,72 @@ edit `zavepower_energy_optimizer.yaml` — the full list of platforms and option
 provided by the `balboa_spa` component is documented in the
 [upstream esphome-balboa-spa repo](https://github.com/brianfeucht/esphome-balboa-spa).
 
-To pull in newer component fixes later, bump the `ref:` in the config's
-`external_components:` block from `v2.24` to a newer upstream tag.
+### Confirmed commands
+
+A click on Jet 1, Lights, Heat Mode (Ready), or Temperature Range (High) records
+a desired state. The device sends one toggle at a time when the spa grants a
+transmission slot, then waits for a valid status packet received at least
+1.5 seconds after transmission. It retries only when that fresh report still
+shows the wrong state. Unchanged status packets count as fresh feedback; cached
+ESPHome updates do not. Jets 2–4 use the same mechanism when configured.
+
+The limit is five transmissions per request and 30 seconds from the click,
+including time waiting for the bus. A newer opposite request replaces the old
+target, while still waiting for any already-transmitted toggle to settle.
+Identical repeated requests do not reset the limit. Requests are not saved
+across reboot and expire during loss of communication.
+
+Switches retain the requested display while waiting. **Spa Command Pending**
+is on until the request is confirmed or expires. **Spa Command Failed** turns
+on when the attempt/deadline limit is reached; the control then returns to the
+last reported spa state. This failure indicator clears on the next request.
+Logs identify requested, transmitted, confirmed, and failed commands.
+Control numbers in logs are 0–3 for jets 1–4, 4 for Lights, 5 for Temperature
+Range, and 6 for Ready mode.
+
+The spa can refuse a request, for example when a pump must run for filtration.
+Confirmation improves delivery but cannot override the controller. There is no
+transaction acknowledgement in this toggle protocol: a response delayed beyond
+the settling interval or a simultaneous topside-panel action can still create
+ambiguity. Hardware testing remains necessary.
+
+Filter 2 enable/schedules, temperature setpoint, blower, and second light retain
+upstream behaviour and do not use these confirmation retries. The thermostat's
+heat-mode and range requests do use the shared controller.
+
+### Developing and testing locally
+
+The remote `v1` component source becomes available only after these component
+files have been published in a release. To test an unpublished checkout, use
+ESPHome locally and replace the device config's `external_components` block with:
+
+```yaml
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [balboa_spa]
+```
+
+Keep the `components` directory alongside the YAML, and provide your usual
+`secrets.yaml`. For validation without real credentials or device access:
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install esphome==2026.9.0
+sh tests/run_native.sh
+.venv/bin/python tests/check_firmware.py
+.venv/bin/python tests/check_firmware.py --compile
+```
+
+The validation script uses fake credentials and the local component; its build
+is **not for installation**. For a device trial, compile your real configuration,
+then check each affected control with one click, watch Pending clear, and compare
+the actual spa/topside state. Test an opposite click while Pending is on and
+confirm a refused request times out rather than toggling indefinitely.
+
+Upstream updates now require reviewing and updating the maintained component
+copy; changing only a version reference does not update its code.
 
 ## Releasing (maintainers)
 

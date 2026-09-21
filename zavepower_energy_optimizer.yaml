@@ -66,11 +66,15 @@ time:
   - platform: homeassistant
     id: homeassistant_time
 
+# This repository carries upstream v2.30 plus confirmed-command delivery.
+# For an unpublished checkout, use a local source (see README).
 external_components:
   - source:
       type: git
-      url: https://github.com/brianfeucht/esphome-balboa-spa
-      ref: v2.24
+      url: https://github.com/osro/esphome-zavepower
+      ref: v1
+    components: [balboa_spa]
+    refresh: 0s
 
 uart:
   id: spa_uart_bus
@@ -137,18 +141,10 @@ climate:
 # --- Jet pumps ---
 # Driven through the `fan` platform rather than `switch:` on purpose.
 #
-# The Balboa protocol only has a *toggle* command, so the component sends a
-# toggle and then retries until the spa reports the state it asked for. The
-# `switch` platform hardcodes its ON target to state 1 (LOW), but many
-# mainboards report a running single-speed pump as state 2 (HIGH) and never 1.
-# On those the target is never matched, so the component keeps toggling — the
-# pump visibly turns on, off, on, off and ends up off a few seconds later.
-# Upstream bug: https://github.com/brianfeucht/esphome-balboa-spa/issues/129
-#
-# The `fan` platform accepts state 2, so requesting speed 2 converges on the
-# first toggle for a single-speed pump (and on the second for a genuine
-# two-speed pump, OFF -> LOW -> HIGH). The fan is `internal` so Home Assistant
-# only sees the plain on/off switch defined further down.
+# Keep the internal fan so ON continues to mean speed 2 (HIGH), preserving the
+# existing behaviour on both single- and two-speed pumps. Home Assistant sees
+# the plain on/off template switch below. The maintained component serializes
+# commands and retries from fresh spa feedback; do not add a second retry loop.
 fan:
   - platform: balboa_spa
     balboa_spa_id: spa
@@ -178,7 +174,7 @@ switch:
     # for absent hardware is a harmless no-op. Confirm on your spa (watch the
     # component logs / topside panel) before uncommenting.
     # NOTE: for extra jets use the `fan:` block above plus a template switch,
-    # not `jet2:`/`jet3:`/`jet4:` here — see the toggle-loop note above.
+    # to keep ON requesting HIGH speed, like Jet 1.
     # light2:
     #   name: "Lights 2"
     # blower:
@@ -193,6 +189,7 @@ switch:
     # State comes from the spa via the fan, so there is nothing to restore.
     restore_mode: DISABLED
     lambda: |-
+      if (!id(spa)->has_status()) return {};
       return id(jet1_fan).state;
     turn_on_action:
       - fan.turn_on:
@@ -204,7 +201,7 @@ switch:
 
   # Ready/Rest heat mode. The Balboa protocol has no direct heater command and
   # no native switch for this, so expose it via a template switch that drives
-  # the spa component's public toggle_heat()/get_restmode() methods.
+  # the spa component's confirmed set_ready()/get_restmode() methods.
   - platform: template
     name: "Heat Mode (Ready)"
     icon: "mdi:radiator"
@@ -212,13 +209,16 @@ switch:
     # OFF = Rest (heats only during filter/circulation cycles).
     # rest_mode==1 means Rest, so Ready = NOT restmode.
     lambda: |-
+      if (!id(spa)->has_status()) return {};
+      if (id(spa)->control_pending(esphome::balboa_spa::ConfirmedCommands::READY))
+        return id(spa)->control_target(esphome::balboa_spa::ConfirmedCommands::READY) != 0;
       return !id(spa)->get_restmode();
     turn_on_action:
       - lambda: |-
-          if (id(spa)->get_restmode()) id(spa)->toggle_heat();
+          id(spa)->set_ready(true);
     turn_off_action:
       - lambda: |-
-          if (!id(spa)->get_restmode()) id(spa)->toggle_heat();
+          id(spa)->set_ready(false);
 
 # The balboa_spa component has no built-in temperature sensor (water temp is
 # only surfaced through the climate entity above). Expose it as its own sensor
@@ -247,6 +247,15 @@ sensor:
       name: "Spa Fault Days Ago"
 
 binary_sensor:
+  - platform: template
+    name: "Spa Command Pending"
+    entity_category: diagnostic
+    lambda: return id(spa)->commands_pending();
+  - platform: template
+    name: "Spa Command Failed"
+    device_class: problem
+    entity_category: diagnostic
+    lambda: return id(spa)->command_failed();
   - platform: balboa_spa
     balboa_spa_id: spa
     connected:
